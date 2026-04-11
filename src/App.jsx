@@ -1,317 +1,1356 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { extractText } from './extractor.js'
 
-// ─── constants ────────────────────────────────────────────────────────────────
-const MODES = [
-  { id: 'profile',      label: 'Análisis de Perfil',       cost: 2 },
-  { id: 'competencies', label: 'Análisis de Competencias',  cost: 2 },
-  { id: 'full',         label: 'Análisis 100% Global',      cost: 3 },
-]
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const C = {
+  bg:       '#060810',
+  surface:  '#0C1018',
+  card:     '#101520',
+  border:   '#1A2535',
+  borderHi: '#253650',
+  accent:   '#0EA5E9',
+  accentDim:'rgba(14,165,233,0.12)',
+  gold:     '#EAB308',
+  goldDim:  'rgba(234,179,8,0.12)',
+  green:    '#10B981',
+  greenDim: 'rgba(16,185,129,0.12)',
+  red:      '#F43F5E',
+  redDim:   'rgba(244,63,94,0.12)',
+  amber:    '#F59E0B',
+  amberDim: 'rgba(245,158,11,0.12)',
+  purple:   '#A855F7',
+  purpleDim:'rgba(168,85,247,0.12)',
+  text:     '#E2EAF4',
+  muted:    '#7A9BB8',
+  dim:      '#3A5570',
+}
 
-const SYSTEM_PROMPT = `Eres un experto en selección de personas para sectores de alta exigencia en Chile (Minería, Energía, Sector Público).
-Analiza CVs versus un perfil de puesto y responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks.
-Estructura exacta requerida:
+// ─── PROMPT: EXTRACCIÓN ESTRUCTURADA DEL PERFIL (Fase 1) ─────────────────────
+const PROMPT_EXTRACT_PROFILE = `Eres un analista experto en diseño de perfiles de cargo para sectores de alta exigencia en Chile (Minería, Energía, Sector Público). Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
+
+TAREA: Lee el documento de perfil de cargo y extrae su estructura de forma completa y ordenada.
+Si algún campo no está presente en el documento, usa null.
+
+Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
+{
+  "nombreCargo": "Título exacto del cargo",
+  "area": "Área o Gerencia a la que reporta",
+  "dependencia": "Cargo al que reporta directamente",
+  "mision": "Misión o propósito del cargo, tal como aparece en el documento (1-3 oraciones)",
+  "funciones": [
+    "Función principal 1",
+    "Función principal 2",
+    "Función principal 3"
+  ],
+  "estudios": {
+    "nivelRequerido": "Ej: Título profesional universitario / Técnico nivel superior / Enseñanza Media",
+    "carrerasAceptadas": ["Carrera 1", "Carrera 2"],
+    "requisitosAdicionales": "Ej: Colegiatura vigente, habilitación profesional, etc."
+  },
+  "experiencia": {
+    "generalAnios": "Ej: 5 años en cargos similares",
+    "especifica": [
+      "Experiencia específica requerida 1",
+      "Experiencia específica requerida 2"
+    ],
+    "sectoresDeseados": ["Sector 1", "Sector 2"]
+  },
+  "competencias": [
+    "Competencia o habilidad clave 1",
+    "Competencia o habilidad clave 2"
+  ],
+  "conocimientosTecnicos": [
+    "Software/sistema/herramienta 1",
+    "Conocimiento técnico 2"
+  ],
+  "idiomas": "Ej: Inglés nivel intermedio / No requerido",
+  "condicionesEspeciales": [
+    "Ej: Disponibilidad para trabajar en faena",
+    "Ej: Licencia clase B vigente"
+  ],
+  "remuneracion": "Si está especificada, indicarla; si no, null",
+  "jornada": "Ej: Jornada completa / Turno 7x7 / Part-time",
+  "lugarTrabajo": "Ciudad o lugar físico del trabajo"
+}
+Solo JSON válido. Si un campo no existe en el documento, usa null o array vacío según corresponda.`
+
+// ─── PROMPT: EXTRACCIÓN DICCIONARIO DE COMPETENCIAS (Fase 1 - modo competencias)
+const PROMPT_EXTRACT_COMPETENCIES = `Eres un experto en diseño de diccionarios de competencias para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
+
+TAREA: Lee el documento de perfil de cargo y extrae TODAS las competencias requeridas para el cargo.
+Incluye competencias técnicas (hard skills) y conductuales (soft skills/blandas).
+Infiere competencias implícitas que el cargo claramente necesita aunque no estén explicitadas.
+
+Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
+{
+  "nombreCargo": "Título exacto del cargo",
+  "competencias": [
+    {
+      "nombre": "Nombre de la competencia",
+      "tipo": "CONDUCTUAL",
+      "definicion": "Definición de la competencia en el contexto de este cargo (1-2 oraciones)",
+      "nivelRequerido": "ALTO",
+      "indicadores": [
+        "Comportamiento observable o indicador conductual 1",
+        "Indicador 2"
+      ],
+      "fuente": "EXPLICITA"
+    }
+  ]
+}
+tipo: "CONDUCTUAL" | "TECNICA" | "LIDERAZGO" | "GESTION"
+nivelRequerido: "BASICO" | "INTERMEDIO" | "ALTO" | "CRITICO"
+fuente: "EXPLICITA" (mencionada en el documento) | "INFERIDA" (implícita por el cargo/funciones)
+Extrae mínimo 5 y máximo 10 competencias. Solo JSON válido.`
+
+// ─── SYSTEM PROMPTS DIFERENCIADOS ─────────────────────────────────────────────
+const PROMPTS = {
+  profile: `Eres un experto senior en selección de personas para sectores de alta exigencia en Chile (Minería, Energía, Sector Público). Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
+
+MODO: ANÁLISIS DE PERFIL CURRICULAR
+Se te entregará:
+  1. Un CUADRO RESUMEN ESTRUCTURADO del cargo (ya extraído y validado)
+  2. Uno o más CVs de candidatos
+
+Tu tarea es contrastar CADA CV contra los requisitos del cuadro resumen y generar una evaluación detallada.
+
+Criterios de scoring ponderado (usa los requisitos del cuadro como referencia explícita):
+  - Formación académica (título, carrera, nivel): 30%
+  - Años de experiencia general en el área: 25%
+  - Experiencia específica requerida por el cargo: 25%
+  - Formación complementaria / certificaciones: 10%
+  - Condiciones especiales / conocimientos técnicos: 10%
+
+Para cada criterio, indica en matchDetail si el candidato CUMPLE, CUMPLE PARCIALMENTE o NO CUMPLE el requisito específico del perfil.
+
+Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
 {
   "candidates": [
     {
-      "name": "Nombre del candidato (extráelo del CV; si no aparece, usa el nombre del archivo sin extensión)",
+      "name": "Nombre completo del candidato (extráelo del CV; si no aparece, usa nombre del archivo sin extensión)",
       "fileName": "archivo.pdf",
       "score": 85,
-      "summary": "Análisis de 2-3 oraciones sobre compatibilidad con el cargo",
-      "strengths": ["fortaleza 1", "fortaleza 2", "fortaleza 3"],
-      "gaps": ["brecha 1", "brecha 2"],
-      "competencies": {
-        "Experiencia Técnica": 80,
-        "Liderazgo": 70,
-        "Adaptabilidad": 85,
-        "Trabajo en Equipo": 90,
-        "Formación Académica": 75
+      "recommendation": "CONTRATAR",
+      "summary": "Análisis de 2-3 oraciones sobre compatibilidad curricular con el cargo, mencionando elementos concretos del perfil",
+      "strengths": ["fortaleza concreta vs. requisito del cargo 1", "fortaleza 2", "fortaleza 3"],
+      "gaps": ["brecha concreta vs. requisito del cargo 1", "brecha 2"],
+      "matchDetail": {
+        "formacion": {
+          "requerido": "Lo que pide el perfil en formación",
+          "candidato": "Lo que tiene el candidato",
+          "cumple": "CUMPLE"
+        },
+        "experienciaGeneral": {
+          "requerido": "Años/tipo de experiencia requerida",
+          "candidato": "Años/tipo que tiene el candidato",
+          "cumple": "CUMPLE PARCIALMENTE"
+        },
+        "experienciaEspecifica": {
+          "requerido": "Experiencia específica del perfil",
+          "candidato": "Experiencia específica del candidato",
+          "cumple": "NO CUMPLE"
+        },
+        "formacionComplementaria": {
+          "requerido": "Certificaciones/cursos del perfil",
+          "candidato": "Certificaciones/cursos del candidato",
+          "cumple": "CUMPLE"
+        },
+        "condicionesEspeciales": {
+          "requerido": "Condiciones especiales del perfil",
+          "candidato": "Si el candidato las cumple o no",
+          "cumple": "CUMPLE"
+        }
+      },
+      "scoreBreakdown": {
+        "Formación Académica": 80,
+        "Experiencia General": 90,
+        "Experiencia Específica": 75,
+        "Formación Complementaria": 70,
+        "Condiciones Especiales": 85
       }
     }
   ]
 }
-score de 0–100. Competencias de 0–100. Ordena candidatos por score descendente. Solo JSON, nada más.`
+recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR"
+cumple: "CUMPLE" | "CUMPLE PARCIALMENTE" | "NO CUMPLE"
+score y scoreBreakdown de 0 a 100. Ordena por score descendente. Solo JSON válido.`,
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
-const sc = v => v >= 75 ? 'var(--green)' : v >= 50 ? 'var(--gold)' : 'var(--red)'
+  competencies: `Eres un experto senior en evaluación de competencias para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
 
-function RankPill({ idx }) {
-  const cfg = [
-    { label: '🥇 1° Lugar', bg: '#f59e0b1e', color: '#f59e0b', border: '#f59e0b3a' },
-    { label: '🥈 2° Lugar', bg: '#94a3b81e', color: '#94a3b8', border: '#94a3b83a' },
-    { label: '🥉 3° Lugar', bg: '#92400e1e', color: '#cd8b45', border: '#92400e3a' },
-  ][idx] || { label: `# ${idx + 1}`, bg: '#23283640', color: 'var(--dim)', border: 'var(--border)' }
+MODO: ANÁLISIS DE COMPETENCIAS — FASE 2 (CONTRASTE)
+Se te entregará:
+  1. DICCIONARIO DE COMPETENCIAS del cargo (ya extraído con definiciones, niveles requeridos e indicadores)
+  2. Uno o más CVs de candidatos
+
+Tu tarea es:
+  a) Para CADA competencia del diccionario, buscar evidencias CONCRETAS en el CV (experiencias, logros, roles, formación)
+  b) Puntuar el nivel del candidato en esa competencia versus el nivel requerido por el cargo
+  c) Registrar la evidencia textual encontrada o indicar ausencia de evidencia
+
+CRITERIO DE SCORING POR COMPETENCIA:
+  - Evidencia directa y sólida + nivel igual o superior al requerido → 85-100
+  - Evidencia parcial o nivel inferior al requerido → 55-84
+  - Sin evidencia observable en el CV → 0-54
+
+Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
+{
+  "candidates": [
+    {
+      "name": "Nombre completo del candidato (extráelo del CV; si no aparece, usa nombre del archivo sin extensión)",
+      "fileName": "archivo.pdf",
+      "score": 78,
+      "recommendation": "RESERVA",
+      "summary": "Evaluación de 2-3 oraciones sobre el perfil competencial del candidato versus el cargo",
+      "strengths": ["fortaleza competencial concreta 1", "fortaleza 2"],
+      "gaps": ["brecha competencial concreta 1", "brecha 2"],
+      "competencies": {
+        "NombreCompetencia1": 85,
+        "NombreCompetencia2": 70
+      },
+      "competencyContrast": [
+        {
+          "competencia": "Nombre exacto de la competencia del diccionario",
+          "nivelRequerido": "ALTO",
+          "nivelObservado": "INTERMEDIO",
+          "score": 68,
+          "evidencia": "Descripción concreta de qué se encontró en el CV que evidencia (o no) esta competencia. Si no hay evidencia, indicar explícitamente.",
+          "brecha": "PARCIAL"
+        }
+      ]
+    }
+  ]
+}
+recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR"
+nivelObservado: "NO OBSERVABLE" | "BASICO" | "INTERMEDIO" | "ALTO" | "CRITICO"
+brecha: "SIN BRECHA" | "PARCIAL" | "SIGNIFICATIVA" | "CRITICA"
+score y competencies de 0 a 100. Ordena candidatos por score descendente. Solo JSON válido.`,
+
+  full: `Eres un experto senior en selección estratégica de personas para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
+
+MODO: ANÁLISIS 360° GLOBAL — INTEGRACIÓN TOTAL
+Este modo contiene los dos análisis anteriores integrados en un único resultado:
+
+BLOQUE 1 — ANÁLISIS DE PERFIL CURRICULAR
+  Se te entregará el CUADRO RESUMEN ESTRUCTURADO del cargo.
+  Evalúa formación, experiencia general, experiencia específica, condiciones especiales.
+  Genera matchDetail con: requerido vs. candidato vs. cumple (CUMPLE / CUMPLE PARCIALMENTE / NO CUMPLE).
+  Ponderación: Formación Académica 30% · Experiencia General 25% · Experiencia Específica 25% · Complementaria 10% · Condiciones 10%.
+
+BLOQUE 2 — ANÁLISIS DE COMPETENCIAS
+  Se te entregará el DICCIONARIO DE COMPETENCIAS del cargo (con definiciones y niveles requeridos).
+  Para cada competencia, busca evidencia concreta en el CV y puntúa el nivel observado.
+  Genera competencyContrast con: competencia · nivelRequerido · nivelObservado · evidencia · score · brecha.
+
+INTEGRACIÓN FINAL
+  scoreProfile = score del Bloque 1 (0-100)
+  scoreCompetencies = score del Bloque 2 (0-100)
+  score = (scoreProfile * 0.60) + (scoreCompetencies * 0.40)
+  Genera un executiveSummary que integre ambos análisis con justificación de la recomendación.
+
+Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
+{
+  "candidates": [
+    {
+      "name": "Nombre completo del candidato (extráelo del CV; si no aparece, usa nombre del archivo sin extensión)",
+      "fileName": "archivo.pdf",
+      "score": 85,
+      "scoreProfile": 83,
+      "scoreCompetencies": 88,
+      "recommendation": "CONTRATAR",
+      "executiveSummary": "Párrafo ejecutivo de 4-5 oraciones que integra la evaluación curricular y competencial, justificando la recomendación con argumentos concretos de ambos bloques",
+      "summary": "Síntesis de 2 oraciones para tabla comparativa",
+      "strengths": ["fortaleza curricular o competencial concreta 1", "fortaleza 2", "fortaleza 3", "fortaleza 4"],
+      "gaps": ["brecha curricular o competencial concreta 1", "brecha 2"],
+      "riskFactors": ["factor de riesgo o punto de atención a considerar"],
+      "matchDetail": {
+        "formacion": {
+          "requerido": "Lo que pide el perfil en formación",
+          "candidato": "Lo que tiene el candidato",
+          "cumple": "CUMPLE"
+        },
+        "experienciaGeneral": {
+          "requerido": "Años/tipo de experiencia requerida",
+          "candidato": "Años/tipo que tiene el candidato",
+          "cumple": "CUMPLE PARCIALMENTE"
+        },
+        "experienciaEspecifica": {
+          "requerido": "Experiencia específica del perfil",
+          "candidato": "Experiencia específica del candidato",
+          "cumple": "NO CUMPLE"
+        },
+        "formacionComplementaria": {
+          "requerido": "Certificaciones/cursos del perfil",
+          "candidato": "Certificaciones/cursos del candidato",
+          "cumple": "CUMPLE"
+        },
+        "condicionesEspeciales": {
+          "requerido": "Condiciones especiales del perfil",
+          "candidato": "Si el candidato las cumple o no",
+          "cumple": "CUMPLE"
+        }
+      },
+      "scoreBreakdown": {
+        "Formación Académica": 80,
+        "Experiencia General": 85,
+        "Experiencia Específica": 75,
+        "Formación Complementaria": 70,
+        "Condiciones Especiales": 90
+      },
+      "competencies": {
+        "NombreCompetencia1": 90,
+        "NombreCompetencia2": 85,
+        "NombreCompetencia3": 78
+      },
+      "competencyContrast": [
+        {
+          "competencia": "Nombre exacto de la competencia del diccionario",
+          "nivelRequerido": "ALTO",
+          "nivelObservado": "INTERMEDIO",
+          "score": 68,
+          "evidencia": "Descripción concreta de qué se encontró en el CV que evidencia (o no) esta competencia",
+          "brecha": "PARCIAL"
+        }
+      ]
+    }
+  ]
+}
+recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR"
+cumple: "CUMPLE" | "CUMPLE PARCIALMENTE" | "NO CUMPLE"
+nivelObservado: "NO OBSERVABLE" | "BASICO" | "INTERMEDIO" | "ALTO" | "CRITICO"
+brecha: "SIN BRECHA" | "PARCIAL" | "SIGNIFICATIVA" | "CRITICA"
+score y scoreBreakdown y competencies de 0 a 100. Ordena candidatos por score descendente. Solo JSON válido.`
+}
+
+// ─── MODOS ────────────────────────────────────────────────────────────────────
+const MODES = [
+  { id: 'profile',      label: 'Análisis de Perfil',    icon: '📋', cost: 2, color: C.accent,  desc: 'Compatibilidad curricular vs. cargo' },
+  { id: 'competencies', label: 'Análisis Competencias', icon: '🧠', cost: 2, color: C.gold,    desc: 'Mapa competencial extraído del perfil' },
+  { id: 'full',         label: 'Análisis 360° Global',  icon: '🔬', cost: 3, color: C.green,   desc: 'Curricular + competencias + recomendación' },
+  { id: 'compare',      label: 'Vista Comparativa',     icon: '⚡', cost: 5, color: C.purple,  desc: '3 análisis en paralelo + Radar + CSV' },
+]
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const scoreColor = v => v >= 75 ? C.green : v >= 50 ? C.amber : C.red
+const RECO_CFG = {
+  'CONTRATAR':     { color: C.green,  bg: C.greenDim,  border: '#10B98130', icon: '✅' },
+  'RESERVA':       { color: C.amber,  bg: C.amberDim,  border: '#F59E0B30', icon: '🟡' },
+  'NO RECOMENDAR': { color: C.red,    bg: C.redDim,    border: '#F43F5E30', icon: '❌' },
+}
+
+// ─── CSS ──────────────────────────────────────────────────────────────────────
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,400&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:${C.bg};color:${C.text};font-family:'Space Grotesk',sans-serif;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:${C.surface}}
+::-webkit-scrollbar-thumb{background:${C.border};border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:${C.borderHi}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes radarIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+.fade-up{animation:fadeUp .45s ease both}
+.slide-in{animation:slideIn .35s ease both}
+.glow-card{position:relative;background:${C.card};border:1px solid ${C.border};border-radius:12px;transition:border-color .25s,box-shadow .25s}
+.glow-card:hover{border-color:${C.borderHi};box-shadow:0 0 0 1px rgba(14,165,233,.07),0 8px 28px rgba(0,0,0,.35)}
+.reco-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.score-ring{display:flex;align-items:center;justify-content:center;flex-direction:column;width:68px;height:68px;border-radius:50%;border:3px solid;font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;flex-shrink:0}
+.bar-row{display:grid;grid-template-columns:130px 1fr 36px;align-items:center;gap:9px;margin-bottom:6px}
+.bar-track{height:5px;background:${C.border};border-radius:100px;overflow:hidden}
+.bar-fill{height:100%;border-radius:100px;transition:width 1.1s ease}
+.cmp-table{width:100%;border-collapse:collapse;font-size:13px}
+.cmp-table th{background:${C.surface};padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${C.muted};border-bottom:1px solid ${C.border}}
+.cmp-table td{padding:11px 14px;border-bottom:1px solid ${C.border};vertical-align:middle}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table tr:hover td{background:rgba(255,255,255,.018)}
+.spinner{width:30px;height:30px;border:3px solid ${C.border};border-top-color:${C.accent};border-radius:50%;animation:spin .7s linear infinite}
+`
+
+// ─── RADAR CHART ──────────────────────────────────────────────────────────────
+function RadarChart({ competencies, color = C.accent, size = 210 }) {
+  const entries = Object.entries(competencies || {}).slice(0, 6)
+  if (!entries.length) return null
+  const n = entries.length
+  const cx = size / 2, cy = size / 2
+  const r = size * 0.34
+  const labelR = r + size * 0.19
+
+  const angle = i => (Math.PI * 2 * i) / n - Math.PI / 2
+  const pt = (i, val) => {
+    const a = angle(i), d = (val / 100) * r
+    return [cx + d * Math.cos(a), cy + d * Math.sin(a)]
+  }
+
+  const rings = [25, 50, 75, 100]
+  const ringPaths = rings.map(pct =>
+    Array.from({ length: n }, (_, i) => pt(i, pct))
+      .map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + 'Z'
+  )
+  const spokes = Array.from({ length: n }, (_, i) => {
+    const [x, y] = pt(i, 100)
+    return `M${cx},${cy}L${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  const dataPts = entries.map((_, i) => pt(i, entries[i][1]))
+  const dataPath = dataPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + 'Z'
+  const uid = color.replace(/[^a-z0-9]/gi, '')
+
   return (
-    <span style={{
-      display: 'inline-block',
-      fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 11,
-      padding: '3px 10px', borderRadius: 100, letterSpacing: 1,
-      textTransform: 'uppercase', marginBottom: 6,
-      background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
-    }}>{cfg.label}</span>
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}
+      style={{ animation: 'radarIn .5s ease both', overflow: 'visible', display: 'block' }}>
+      <defs>
+        <radialGradient id={`rg${uid}`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={color} stopOpacity=".22" />
+          <stop offset="100%" stopColor={color} stopOpacity=".03" />
+        </radialGradient>
+      </defs>
+      {ringPaths.map((d, i) => <path key={i} d={d} fill="none" stroke={C.border} strokeWidth="1" />)}
+      {spokes.map((d, i) => <path key={i} d={d} stroke={C.border} strokeWidth="1" />)}
+      <path d={dataPath} fill={`url(#rg${uid})`} stroke={color} strokeWidth="1.5" />
+      {dataPts.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="3.5" fill={color} stroke={C.bg} strokeWidth="1.5" />
+      ))}
+      {entries.map(([name, val], i) => {
+        const a = angle(i)
+        const lx = cx + labelR * Math.cos(a)
+        const ly = cy + labelR * Math.sin(a)
+        const anchor = lx < cx - 5 ? 'end' : lx > cx + 5 ? 'start' : 'middle'
+        const label = name.length > 13 ? name.slice(0, 12) + '…' : name
+        return (
+          <g key={i}>
+            <text x={lx} y={ly - 5} textAnchor={anchor} fontSize="9" fontFamily="'JetBrains Mono'" fill={C.muted} fontWeight="500">{label}</text>
+            <text x={lx} y={ly + 7} textAnchor={anchor} fontSize="10" fontFamily="'JetBrains Mono'" fill={color} fontWeight="700">{val}</text>
+          </g>
+        )
+      })}
+    </svg>
   )
 }
 
-// ─── CandidateCard ────────────────────────────────────────────────────────────
-function CandidateCard({ candidate: c, idx, mode }) {
-  const [open, setOpen] = useState(true)
+// ─── SUBCOMPONENTS ────────────────────────────────────────────────────────────
+function ScoreRing({ score }) {
+  const col = scoreColor(score)
   return (
-    <div className="slide-in" style={{
-      animationDelay: `${idx * 0.07}s`,
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 'var(--rl)', padding: '22px 26px',
-      borderLeft: idx === 0 ? '3px solid var(--gold)' : idx === 1 ? '3px solid #94a3b8' : idx === 2 ? '3px solid #cd8b45' : '1px solid var(--border)',
-    }}>
-      {/* top row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
-        <div style={{ flex: 1 }}>
-          <RankPill idx={idx} />
-          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: -.3 }}>{c.name || 'Candidato'}</div>
-          <div style={{ fontSize: 12, color: 'var(--dim)', marginTop: 2 }}>{c.fileName}</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 32, letterSpacing: -2, lineHeight: 1, color: sc(c.score) }}>{c.score}</div>
-          <div style={{ fontSize: 11, color: 'var(--dim)', textTransform: 'uppercase', letterSpacing: .5 }}>/ 100</div>
-        </div>
-      </div>
-
-      {/* score bar */}
-      <div style={{ height: 5, background: 'var(--surface2)', borderRadius: 100, overflow: 'hidden', marginBottom: 14 }}>
-        <div style={{ height: '100%', borderRadius: 100, width: `${c.score}%`, background: 'linear-gradient(90deg,#2563eb,#38bdf8)', transition: 'width 1.1s ease' }} />
-      </div>
-
-      {/* toggle details */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 12, fontFamily: "'DM Sans',sans-serif", marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}
-      >
-        {open ? '▾' : '▸'} {open ? 'Ocultar detalle' : 'Ver detalle'}
-      </button>
-
-      {open && <>
-        {/* strengths */}
-        {c.strengths?.length > 0 && (
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 10, color: 'var(--dim)', textTransform: 'uppercase', letterSpacing: .5, fontWeight: 500, marginBottom: 5 }}>Fortalezas</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {c.strengths.map((s, i) => (
-                <span key={i} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 100, background: '#10b98112', border: '1px solid #10b98128', color: 'var(--green)' }}>{s}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* gaps */}
-        {c.gaps?.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: 'var(--dim)', textTransform: 'uppercase', letterSpacing: .5, fontWeight: 500, marginBottom: 5 }}>Brechas</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {c.gaps.map((g, i) => (
-                <span key={i} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 100, background: '#ef444412', border: '1px solid #ef444428', color: 'var(--red)' }}>{g}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* competencies */}
-        {mode !== 'profile' && c.competencies && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(155px,1fr))', gap: 6, marginBottom: 11 }}>
-            {Object.entries(c.competencies).map(([k, v]) => (
-              <div key={k} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '8px 11px' }}>
-                <div style={{ fontSize: 10, color: 'var(--dim)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 3, fontWeight: 500 }}>{k}</div>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, color: sc(v) }}>{v}%</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* summary */}
-        {c.summary && (
-          <div style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--muted)', background: 'var(--surface2)', borderRadius: 'var(--r)', padding: '12px 14px', border: '1px solid var(--border)', marginTop: 4 }}>
-            {c.summary}
-          </div>
-        )}
-      </>}
+    <div className="score-ring" style={{ borderColor: col, color: col, boxShadow: `0 0 18px ${col}22` }}>
+      <span>{score}</span>
+      <span style={{ fontSize: 9, letterSpacing: '.06em', opacity: .65 }}>/100</span>
     </div>
   )
 }
 
-// ─── DropZone ─────────────────────────────────────────────────────────────────
+function RecoBadge({ reco }) {
+  const cfg = RECO_CFG[reco] || RECO_CFG['RESERVA']
+  return (
+    <span className="reco-badge" style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+      {cfg.icon} {reco}
+    </span>
+  )
+}
+
+function BarRow({ label, value }) {
+  const col = scoreColor(value)
+  return (
+    <div className="bar-row">
+      <span style={{ fontSize: 11, color: C.muted, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+      <div className="bar-track">
+        <div className="bar-fill" style={{ width: `${value}%`, background: col }} />
+      </div>
+      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono'", color: col, fontWeight: 700, textAlign: 'right' }}>{value}</span>
+    </div>
+  )
+}
+
 function DropZone({ icon, label, hint, multiple, onFiles, inputRef }) {
   const [over, setOver] = useState(false)
   return (
-    <div
-      onDragOver={e => { e.preventDefault(); setOver(true) }}
+    <div onDragOver={e => { e.preventDefault(); setOver(true) }}
       onDragLeave={() => setOver(false)}
       onDrop={e => { e.preventDefault(); setOver(false); onFiles(e.dataTransfer.files) }}
-      style={{
-        border: `1.5px dashed ${over ? 'var(--accent)' : 'var(--border)'}`,
-        borderRadius: 'var(--r)', padding: '20px 14px', textAlign: 'center',
-        cursor: 'pointer', background: over ? '#2563eb09' : '#ffffff03',
-        transition: 'all .2s', position: 'relative',
-      }}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".txt,.pdf,.docx"
-        multiple={multiple}
+      style={{ border: `1.5px dashed ${over ? C.accent : C.border}`, borderRadius: 9, padding: '16px 12px', textAlign: 'center', cursor: 'pointer', background: over ? C.accentDim : 'transparent', transition: 'all .2s', position: 'relative' }}>
+      <input ref={inputRef} type="file" accept=".txt,.pdf,.docx" multiple={multiple}
         onChange={e => onFiles(e.target.files)}
-        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-      />
-      <div style={{ fontSize: 26, marginBottom: 6 }}>{icon}</div>
-      <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 500 }}>
-        <strong style={{ color: 'var(--accent2)', fontWeight: 600 }}>{label}</strong>
+        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
+      <div style={{ fontSize: 22, marginBottom: 5 }}>{icon}</div>
+      <div style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>
+        <strong style={{ color: C.accent }}>{label}</strong>
       </div>
-      <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 3 }}>{hint}</div>
+      <div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>{hint}</div>
     </div>
   )
 }
 
-// ─── FileItem ─────────────────────────────────────────────────────────────────
 function FileItem({ name, status, onRemove }) {
-  const color = status === 'ready' ? 'var(--green)' : status === 'ocr' ? 'var(--gold)' : status === 'error' ? 'var(--red)' : 'var(--muted)'
-  const icon  = status === 'ready' ? '✓' : status === 'ocr' ? '⟳' : status === 'error' ? '✗' : '…'
+  const cols = { ready: C.green, ocr: C.amber, error: C.red, loading: C.muted }
+  const icons = { ready: '✓', ocr: '⟳', error: '✗', loading: '…' }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', fontSize: 12 }}>
-      <span style={{ color, fontSize: 13 }}>{icon}</span>
-      <span style={{ flex: 1, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
-      {onRemove && <span onClick={onRemove} style={{ cursor: 'pointer', color: 'var(--dim)', fontSize: 17, lineHeight: 1, transition: 'color .2s' }} onMouseOver={e => e.target.style.color='var(--red)'} onMouseOut={e => e.target.style.color='var(--dim)'}>×</span>}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 10px', fontSize: 12 }}>
+      <span style={{ color: cols[status] || C.muted, fontSize: 13 }}>{icons[status] || '…'}</span>
+      <span style={{ flex: 1, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+      {onRemove && <span onClick={onRemove} style={{ cursor: 'pointer', color: C.dim, fontSize: 16, lineHeight: 1 }}>×</span>}
     </div>
   )
 }
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+
+// ─── PROFILE CARD — Cuadro resumen estructurado del cargo ────────────────────
+const CUMPLE_CFG = {
+  'CUMPLE':             { color: '#10B981', bg: 'rgba(16,185,129,0.12)', icon: '✅' },
+  'CUMPLE PARCIALMENTE':{ color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', icon: '🟡' },
+  'NO CUMPLE':          { color: '#F43F5E', bg: 'rgba(244,63,94,0.12)',  icon: '❌' },
+}
+
+function ProfileFieldRow({ label, value, mono = false }) {
+  if (!value || (Array.isArray(value) && value.length === 0)) return null
+  const display = Array.isArray(value) ? value.join(' · ') : value
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '148px 1fr', gap: 8, padding: '7px 0', borderBottom: `1px solid ${C.border}` }}>
+      <span style={{ fontSize: 10, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', paddingTop: 1 }}>{label}</span>
+      <span style={{ fontSize: 12, color: mono ? C.accent : C.text, fontFamily: mono ? "'JetBrains Mono'" : "'Space Grotesk'", lineHeight: 1.55 }}>{display}</span>
+    </div>
+  )
+}
+
+function ProfileCard({ profile, loading }) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  if (loading) return (
+    <div className="glow-card fade-up" style={{ padding: '18px 22px', borderLeft: `3px solid ${C.accent}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="spinner" />
+      <div>
+        <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 13, color: C.accent }}>Extrayendo estructura del perfil…</div>
+        <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>La IA está leyendo el documento y organizando los requisitos del cargo</div>
+      </div>
+    </div>
+  )
+
+  if (!profile) return null
+
+  return (
+    <div className="glow-card fade-up" style={{ borderLeft: `3px solid ${C.accent}`, marginBottom: 4 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: collapsed ? 'none' : `1px solid ${C.border}`, cursor: 'pointer' }} onClick={() => setCollapsed(c => !c)}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentDim, border: `1px solid ${C.accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📋</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 9, color: C.accent, fontFamily: "'JetBrains Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
+            Cuadro Resumen del Cargo · Referencia de Contraste
+          </div>
+          <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1, color: C.text }}>
+            {profile.nombreCargo || 'Cargo no identificado'}
+          </div>
+          {(profile.area || profile.dependencia) && (
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+              {[profile.area, profile.dependencia].filter(Boolean).join(' · ')}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          {profile.jornada && (
+            <span style={{ fontSize: 10, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 100, padding: '3px 9px' }}>{profile.jornada}</span>
+          )}
+          {profile.lugarTrabajo && (
+            <span style={{ fontSize: 10, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 100, padding: '3px 9px' }}>📍 {profile.lugarTrabajo}</span>
+          )}
+          <span style={{ color: C.dim, fontSize: 14 }}>{collapsed ? '▸' : '▾'}</span>
+        </div>
+      </div>
+
+      {!collapsed && (
+        <div style={{ padding: '16px 22px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(340px,1fr))', gap: '0 32px' }}>
+          {/* Columna izquierda */}
+          <div>
+            {profile.mision && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Misión del Cargo</div>
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 13px', fontStyle: 'italic' }}>
+                  "{profile.mision}"
+                </div>
+              </div>
+            )}
+
+            {profile.estudios && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Estudios Requeridos</div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 13px' }}>
+                  <ProfileFieldRow label="Nivel" value={profile.estudios.nivelRequerido} mono />
+                  {profile.estudios.carrerasAceptadas?.length > 0 && (
+                    <ProfileFieldRow label="Carreras" value={profile.estudios.carrerasAceptadas} />
+                  )}
+                  {profile.estudios.requisitosAdicionales && (
+                    <ProfileFieldRow label="Adicionales" value={profile.estudios.requisitosAdicionales} />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {profile.experiencia && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Experiencia Requerida</div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 13px' }}>
+                  <ProfileFieldRow label="General" value={profile.experiencia.generalAnios} mono />
+                  {profile.experiencia.sectoresDeseados?.length > 0 && (
+                    <ProfileFieldRow label="Sectores" value={profile.experiencia.sectoresDeseados} />
+                  )}
+                  {profile.experiencia.especifica?.length > 0 && (
+                    <div style={{ paddingTop: 8 }}>
+                      <div style={{ fontSize: 10, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Específica</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {profile.experiencia.especifica.map((e, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                            <span style={{ color: C.accent, fontSize: 11, marginTop: 1, flexShrink: 0 }}>◈</span>
+                            <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>{e}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Columna derecha */}
+          <div>
+            {profile.funciones?.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Funciones Principales</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {profile.funciones.slice(0, 6).map((f, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '8px 10px' }}>
+                      <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.accent, fontWeight: 700, minWidth: 18, paddingTop: 1 }}>{String(i + 1).padStart(2, '0')}</span>
+                      <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {profile.competencias?.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Competencias</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {profile.competencias.map((c, i) => (
+                      <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 100, background: `${C.accent}12`, border: `1px solid ${C.accent}28`, color: C.accent, fontWeight: 500 }}>{c}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {profile.conocimientosTecnicos?.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Conocim. Técnicos</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {profile.conocimientosTecnicos.map((k, i) => (
+                      <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 100, background: `${C.gold}12`, border: `1px solid ${C.gold}28`, color: C.gold, fontWeight: 500 }}>{k}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {profile.condicionesEspeciales?.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Condiciones Especiales</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {profile.condicionesEspeciales.map((c, i) => (
+                    <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 100, background: C.amberDim, border: `1px solid ${C.amber}28`, color: C.amber, fontWeight: 500 }}>⚠ {c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(profile.remuneracion || profile.idiomas) && (
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 13px' }}>
+                <ProfileFieldRow label="Remuneración" value={profile.remuneracion} mono />
+                <ProfileFieldRow label="Idiomas" value={profile.idiomas} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── MATCH DETAIL SECTION (dentro de CandidateCard) ──────────────────────────
+function MatchDetailTable({ matchDetail }) {
+  if (!matchDetail) return null
+  const labels = {
+    formacion: 'Formación Académica',
+    experienciaGeneral: 'Experiencia General',
+    experienciaEspecifica: 'Experiencia Específica',
+    formacionComplementaria: 'Formación Complementaria',
+    condicionesEspeciales: 'Condiciones Especiales',
+  }
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 8 }}>
+        Contraste Perfil vs. Candidato
+      </div>
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: C.surface }}>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '22%' }}>Criterio</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '34%' }}>Requerido por Perfil</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '34%' }}>Candidato aporta</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '10%' }}>Cumple</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(matchDetail).map(([key, val], i) => {
+              const cfg = CUMPLE_CFG[val.cumple] || CUMPLE_CFG['CUMPLE PARCIALMENTE']
+              return (
+                <tr key={key} style={{ borderTop: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.012)' }}>
+                  <td style={{ padding: '9px 12px', fontWeight: 600, color: C.muted, fontSize: 11 }}>{labels[key] || key}</td>
+                  <td style={{ padding: '9px 12px', color: C.dim, fontSize: 11, lineHeight: 1.5 }}>{val.requerido || '—'}</td>
+                  <td style={{ padding: '9px 12px', color: C.text, fontSize: 11, lineHeight: 1.5 }}>{val.candidato || '—'}</td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30`, borderRadius: 100, padding: '3px 8px', whiteSpace: 'nowrap' }}>
+                      {cfg.icon} {val.cumple}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+
+// ─── COMPETENCY DICT CARD ─────────────────────────────────────────────────────
+const NIVEL_CFG = {
+  'BASICO':     { color: '#7A9BB8', bg: 'rgba(122,155,184,0.10)', dot: '○' },
+  'INTERMEDIO': { color: '#EAB308', bg: 'rgba(234,179,8,0.10)',   dot: '◑' },
+  'ALTO':       { color: '#0EA5E9', bg: 'rgba(14,165,233,0.10)',  dot: '●' },
+  'CRITICO':    { color: '#F43F5E', bg: 'rgba(244,63,94,0.10)',   dot: '★' },
+}
+const TIPO_CFG = {
+  'CONDUCTUAL': { color: '#A855F7', bg: 'rgba(168,85,247,0.10)' },
+  'TECNICA':    { color: '#0EA5E9', bg: 'rgba(14,165,233,0.10)' },
+  'LIDERAZGO':  { color: '#EAB308', bg: 'rgba(234,179,8,0.10)'  },
+  'GESTION':    { color: '#10B981', bg: 'rgba(16,185,129,0.10)' },
+}
+const BRECHA_CFG = {
+  'SIN BRECHA':   { color: '#10B981', icon: '✅' },
+  'PARCIAL':      { color: '#F59E0B', icon: '🟡' },
+  'SIGNIFICATIVA':{ color: '#F43F5E', icon: '⚠️' },
+  'CRITICA':      { color: '#F43F5E', icon: '🔴' },
+}
+
+function CompetencyDictCard({ dict, loading }) {
+  const [collapsed, setCollapsed] = useState(false)
+  const [expanded, setExpanded]   = useState(null)
+
+  if (loading) return (
+    <div className="glow-card fade-up" style={{ padding: '18px 22px', borderLeft: `3px solid ${C.gold}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="spinner" />
+      <div>
+        <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 13, color: C.gold }}>Extrayendo diccionario de competencias…</div>
+        <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>Identificando competencias técnicas y conductuales del cargo</div>
+      </div>
+    </div>
+  )
+  if (!dict) return null
+
+  const comps = dict.competencias || []
+  const byTipo = comps.reduce((acc, c) => {
+    acc[c.tipo] = acc[c.tipo] || []
+    acc[c.tipo].push(c)
+    return acc
+  }, {})
+
+  return (
+    <div className="glow-card fade-up" style={{ borderLeft: `3px solid ${C.gold}` }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: collapsed ? 'none' : `1px solid ${C.border}`, cursor: 'pointer' }}
+        onClick={() => setCollapsed(c => !c)}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.goldDim, border: `1px solid ${C.gold}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>🧠</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 9, color: C.gold, fontFamily: "'JetBrains Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
+            Diccionario de Competencias · Referencia de Contraste
+          </div>
+          <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.1, color: C.text }}>
+            {dict.nombreCargo || 'Cargo'} — {comps.length} competencias identificadas
+          </div>
+        </div>
+        {/* Resumen por tipo */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
+          {Object.entries(byTipo).map(([tipo, list]) => {
+            const cfg = TIPO_CFG[tipo] || TIPO_CFG['TECNICA']
+            return (
+              <span key={tipo} style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30`, borderRadius: 100, padding: '3px 9px' }}>
+                {tipo} ×{list.length}
+              </span>
+            )
+          })}
+        </div>
+        <span style={{ color: C.dim, fontSize: 14, marginLeft: 8 }}>{collapsed ? '▸' : '▾'}</span>
+      </div>
+
+      {!collapsed && (
+        <div style={{ padding: '16px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(310px,1fr))', gap: 10 }}>
+            {comps.map((comp, i) => {
+              const nivelCfg = NIVEL_CFG[comp.nivelRequerido] || NIVEL_CFG['INTERMEDIO']
+              const tipoCfg  = TIPO_CFG[comp.tipo] || TIPO_CFG['TECNICA']
+              const isOpen = expanded === i
+              return (
+                <div key={i}
+                  onClick={() => setExpanded(isOpen ? null : i)}
+                  style={{ background: C.surface, border: `1px solid ${isOpen ? C.gold + '50' : C.border}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', transition: 'all .2s' }}>
+                  {/* Comp header */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: isOpen ? 10 : 0 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: tipoCfg.color, background: tipoCfg.bg, border: `1px solid ${tipoCfg.color}25`, borderRadius: 100, padding: '2px 7px' }}>{comp.tipo}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: nivelCfg.color, background: nivelCfg.bg, border: `1px solid ${nivelCfg.color}25`, borderRadius: 100, padding: '2px 7px' }}>{nivelCfg.dot} {comp.nivelRequerido}</span>
+                        {comp.fuente === 'INFERIDA' && (
+                          <span style={{ fontSize: 9, color: C.dim, fontFamily: "'JetBrains Mono'", border: `1px solid ${C.border}`, borderRadius: 100, padding: '2px 6px' }}>INFERIDA</span>
+                        )}
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: C.text, lineHeight: 1.3 }}>{comp.nombre}</div>
+                    </div>
+                    <span style={{ color: C.dim, fontSize: 12, flexShrink: 0, marginTop: 2 }}>{isOpen ? '▾' : '▸'}</span>
+                  </div>
+                  {isOpen && (
+                    <div>
+                      <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.65, marginBottom: 10, borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
+                        {comp.definicion}
+                      </div>
+                      {comp.indicadores?.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.09em', marginBottom: 6 }}>Indicadores Conductuales</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {comp.indicadores.map((ind, j) => (
+                              <div key={j} style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                                <span style={{ color: C.gold, fontSize: 10, marginTop: 2, flexShrink: 0 }}>◈</span>
+                                <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>{ind}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── COMPETENCY CONTRAST TABLE (dentro de CandidateCard, modo competencies) ──
+function CompetencyContrastTable({ competencyContrast }) {
+  if (!competencyContrast?.length) return null
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 8 }}>
+        Contraste Diccionario vs. Candidato
+      </div>
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: C.surface }}>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '18%' }}>Competencia</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '10%' }}>Requerido</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '10%' }}>Observado</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '44%' }}>Evidencia levantada del CV</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '8%' }}>Score</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '10%' }}>Brecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {competencyContrast.map((row, i) => {
+              const nivelReqCfg  = NIVEL_CFG[row.nivelRequerido]  || NIVEL_CFG['INTERMEDIO']
+              const nivelObsCfg  = NIVEL_CFG[row.nivelObservado]  || { color: C.dim, dot: '○' }
+              const brechaCfg    = BRECHA_CFG[row.brecha]         || BRECHA_CFG['PARCIAL']
+              return (
+                <tr key={i} style={{ borderTop: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.012)' }}>
+                  <td style={{ padding: '9px 12px', fontWeight: 700, color: C.text, fontSize: 12, lineHeight: 1.4 }}>{row.competencia}</td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: nivelReqCfg.color }}>
+                      {nivelReqCfg.dot} {row.nivelRequerido}
+                    </span>
+                  </td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: nivelObsCfg.color }}>
+                      {nivelObsCfg.dot || '○'} {row.nivelObservado}
+                    </span>
+                  </td>
+                  <td style={{ padding: '9px 12px', color: C.muted, fontSize: 11, lineHeight: 1.6 }}>{row.evidencia}</td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 14, color: scoreColor(row.score) }}>{row.score}</span>
+                  </td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: brechaCfg.color, whiteSpace: 'nowrap' }}>
+                      {brechaCfg.icon} {row.brecha}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ─── CANDIDATE CARD ───────────────────────────────────────────────────────────
+function CandidateCard({ candidate: c, idx }) {
+  const [open, setOpen] = useState(true)
+  const rankColors = ['#EAB308', '#94A3B8', '#CD8B45']
+  const rankLabels = ['🥇 1° Lugar', '🥈 2° Lugar', '🥉 3° Lugar']
+  const borderLeft = `3px solid ${idx < 3 ? rankColors[idx] : C.border}`
+
+  return (
+    <div className="glow-card slide-in" style={{ padding: '20px 22px', borderLeft, animationDelay: `${idx * 0.06}s` }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
+        <ScoreRing score={c.score} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {idx < 3 && (
+            <div style={{ fontSize: 9, fontWeight: 700, color: rankColors[idx], letterSpacing: '.1em', textTransform: 'uppercase', fontFamily: "'JetBrains Mono'", marginBottom: 3 }}>
+              {rankLabels[idx]}
+            </div>
+          )}
+          <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.2, marginBottom: 5 }}>{c.name || 'Candidato'}</div>
+          <div style={{ fontSize: 11, color: C.dim, marginBottom: 7 }}>{c.fileName}</div>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
+            {c.recommendation && <RecoBadge reco={c.recommendation} />}
+            {c.scoreProfile != null && (
+              <span style={{ fontSize: 10, color: C.muted, fontFamily: "'JetBrains Mono'" }}>
+                Perfil: <strong style={{ color: scoreColor(c.scoreProfile) }}>{c.scoreProfile}</strong>
+                {' '}· Compet: <strong style={{ color: scoreColor(c.scoreCompetencies) }}>{c.scoreCompetencies}</strong>
+              </span>
+            )}
+          </div>
+        </div>
+        <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, cursor: 'pointer', color: C.dim, fontSize: 11, padding: '5px 9px', fontFamily: "'JetBrains Mono'", transition: 'all .2s' }}>
+          {open ? '▾ ocultar' : '▸ ver'}
+        </button>
+      </div>
+
+      {open && (
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            {(c.executiveSummary || c.summary) && (
+              <div style={{ fontSize: 13, lineHeight: 1.7, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+                {c.executiveSummary || c.summary}
+              </div>
+            )}
+            {c.strengths?.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 5 }}>Fortalezas</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {c.strengths.map((s, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.greenDim, border: `1px solid ${C.green}28`, color: C.green, fontWeight: 500 }}>{s}</span>)}
+                </div>
+              </div>
+            )}
+            {c.gaps?.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 5 }}>Brechas</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {c.gaps.map((g, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.redDim, border: `1px solid ${C.red}28`, color: C.red, fontWeight: 500 }}>{g}</span>)}
+                </div>
+              </div>
+            )}
+            {c.riskFactors?.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 5 }}>Factores de Riesgo</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {c.riskFactors.map((r, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.amberDim, border: `1px solid ${C.amber}28`, color: C.amber, fontWeight: 500 }}>⚠ {r}</span>)}
+                </div>
+              </div>
+            )}
+            {c.scoreBreakdown && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 8 }}>Desglose Curricular</div>
+                {Object.entries(c.scoreBreakdown).map(([k, v]) => <BarRow key={k} label={k} value={v} />)}
+              </div>
+            )}
+            {/* Tabla de contraste perfil vs candidato — solo modo profile */}
+            {c.matchDetail && <MatchDetailTable matchDetail={c.matchDetail} />}
+            {c.competencyContrast?.length > 0 && <CompetencyContrastTable competencyContrast={c.competencyContrast} />}
+          </div>
+          {c.competencies && Object.keys(c.competencies).length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700 }}>Radar Competencial</div>
+              <RadarChart competencies={c.competencies} color={C.accent} size={220} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── COMPARATIVE PANEL ────────────────────────────────────────────────────────
+function ComparativePanel({ compareResults, onExportCSV }) {
+  const { profile, competencies, full } = compareResults
+  const [tab, setTab] = useState('matrix')
+
+  const allNames = [...new Set([
+    ...(profile?.candidates || []).map(c => c.name),
+    ...(competencies?.candidates || []).map(c => c.name),
+    ...(full?.candidates || []).map(c => c.name),
+  ])]
+
+  const find = (results, name) => results?.candidates?.find(c => c.name === name)
+
+  const matrix = allNames.map(name => {
+    const p = find(profile, name), co = find(competencies, name), f = find(full, name)
+    const scores = [p?.score, co?.score, f?.score].filter(s => s != null)
+    const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
+    return { name, p, co, f, avg }
+  }).sort((a, b) => b.avg - a.avg)
+
+  const tabStyle = active => ({
+    padding: '7px 16px', borderRadius: 7, border: `1px solid ${active ? C.accent : C.border}`,
+    background: active ? C.accentDim : 'transparent',
+    color: active ? C.accent : C.muted,
+    fontFamily: "'Space Grotesk'", fontSize: 12, fontWeight: 600,
+    cursor: 'pointer', transition: 'all .2s',
+  })
+
+  return (
+    <div>
+      {/* Sub-tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        {[{ id: 'matrix', label: '📊 Matriz Cruzada' }, { id: 'radars', label: '🕸 Radares' }, { id: 'ranking', label: '🏆 Ranking Final' }]
+          .map(t => <button key={t.id} onClick={() => setTab(t.id)} style={tabStyle(tab === t.id)}>{t.label}</button>)}
+        <button onClick={onExportCSV} style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: 7, border: `1px solid ${C.green}40`, background: C.greenDim, color: C.green, fontFamily: "'Space Grotesk'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          ⬇ Exportar CSV
+        </button>
+      </div>
+
+      {/* MATRIZ */}
+      {tab === 'matrix' && (
+        <div className="glow-card" style={{ overflow: 'auto' }}>
+          <table className="cmp-table">
+            <thead>
+              <tr>
+                <th style={{ minWidth: 160 }}>Candidato</th>
+                <th style={{ textAlign: 'center' }}>📋 Perfil</th>
+                <th style={{ textAlign: 'center' }}>🧠 Competencias</th>
+                <th style={{ textAlign: 'center' }}>🔬 360°</th>
+                <th style={{ textAlign: 'center' }}>⚡ Promedio</th>
+                <th>Recomendación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matrix.map((row, i) => {
+                const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
+                return (
+                  <tr key={i}>
+                    <td>
+                      <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 14 }}>{row.name}</div>
+                      {i < 3 && <div style={{ fontSize: 9, color: ['#EAB308','#94A3B8','#CD8B45'][i], fontFamily: "'JetBrains Mono'", fontWeight: 700, letterSpacing: '.08em', marginTop: 2 }}>
+                        {['🥇 MEJOR MATCH','🥈 2° LUGAR','🥉 3° LUGAR'][i]}
+                      </div>}
+                    </td>
+                    {[row.p?.score, row.co?.score, row.f?.score].map((s, j) => (
+                      <td key={j} style={{ textAlign: 'center' }}>
+                        {s != null
+                          ? <span style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 16, color: scoreColor(s) }}>{s}</span>
+                          : <span style={{ color: C.dim, fontSize: 12 }}>—</span>}
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'center' }}>
+                      <span style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 17, color: scoreColor(row.avg) }}>{row.avg}</span>
+                    </td>
+                    <td>{reco && <RecoBadge reco={reco} />}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* RADARES */}
+      {tab === 'radars' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: 14 }}>
+          {matrix.map((row, i) => {
+            const comps = row.f?.competencies || row.co?.competencies
+            if (!comps) return (
+              <div key={i} className="glow-card" style={{ padding: 18, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{row.name}</div>
+                <div style={{ fontSize: 12, color: C.dim }}>Sin datos de competencias</div>
+              </div>
+            )
+            const colors = [C.gold, C.accent, C.green, C.purple]
+            const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
+            return (
+              <div key={i} className="glow-card" style={{ padding: '18px', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{row.name}</div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                  {reco && <RecoBadge reco={reco} />}
+                  <span style={{ fontFamily: "'JetBrains Mono'", color: scoreColor(row.avg), fontWeight: 700, fontSize: 13 }}>AVG: {row.avg}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <RadarChart competencies={comps} color={colors[i % colors.length]} size={225} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* RANKING */}
+      {tab === 'ranking' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {matrix.map((row, i) => {
+            const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
+            const summary = row.f?.summary || row.p?.summary
+            const rankColor = ['#EAB308','#94A3B8','#CD8B45'][i] || C.border
+            return (
+              <div key={i} className="glow-card" style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, borderLeft: `3px solid ${rankColor}` }}>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 22, color: C.dim, minWidth: 32 }}>#{i + 1}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>{row.name}</div>
+                  {summary && <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{summary}</div>}
+                </div>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {[
+                    { label: 'Perfil', score: row.p?.score, color: C.accent },
+                    { label: 'Compet.', score: row.co?.score, color: C.gold },
+                    { label: '360°', score: row.f?.score, color: C.green },
+                    { label: 'AVG', score: row.avg, color: C.text },
+                  ].map(({ label, score, color }) => (
+                    <div key={label} style={{ textAlign: 'center', minWidth: 42 }}>
+                      <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 17, color: score != null ? scoreColor(score) : C.dim }}>
+                        {score ?? '—'}
+                      </div>
+                    </div>
+                  ))}
+                  {reco && <RecoBadge reco={reco} />}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [credits, setCredits]     = useState(20)
-  const [jobFile, setJobFile]     = useState(null)   // { name, content, status }
-  const [cvFiles, setCvFiles]     = useState([])     // [{ name, content, status }]
-  const [mode, setMode]           = useState('profile')
-  const [loading, setLoading]     = useState(false)
-  const [loadMsg, setLoadMsg]     = useState('')
-  const [results, setResults]     = useState(null)
-  const [error, setError]         = useState('')
-  const [modal, setModal]         = useState(false)
-  const [toast, setToast]         = useState(null)
+  const [credits, setCredits]                   = useState(20)
+  const [jobFile, setJobFile]                   = useState(null)
+  const [profileData, setProfileData]           = useState(null)
+  const [profileLoading, setProfileLoading]     = useState(false)
+  const [competencyDict, setCompetencyDict]     = useState(null)
+  const [competencyLoading, setCompetencyLoading] = useState(false)
+  const [cvFiles, setCvFiles]                   = useState([])
+  const [mode, setMode]                     = useState('profile')
+  const [loading, setLoading]               = useState(false)
+  const [loadMsg, setLoadMsg]               = useState('')
+  const [results, setResults]               = useState(null)
+  const [compareResults, setCompareResults] = useState(null)
+  const [activeView, setActiveView]         = useState('results')
+  const [error, setError]                   = useState('')
+  const [toast, setToast]                   = useState(null)
+  const [modal, setModal]                   = useState(false)
   const jobRef = useRef()
   const cvRef  = useRef()
 
-  function notify(icon, msg, type = 's') {
+  const notify = (icon, msg, type = 's') => {
     setToast({ icon, msg, type })
-    setTimeout(() => setToast(null), 3200)
+    setTimeout(() => setToast(null), 3400)
   }
 
-  // ── load job file ────────────────────────────────────────────────────────────
   async function handleJobFiles(fileList) {
     const file = fileList[0]
     if (!file) return
     setJobFile({ name: file.name, content: '', status: 'loading' })
+    setProfileData(null)
+    setCompetencyDict(null)
+    setResults(null)
+    setCompareResults(null)
     try {
-      const content = await extractText(file, msg => setLoadMsg(msg))
-      setJobFile({ name: file.name, content, status: 'ready' })
-      notify('✓', `Perfil cargado (${content.length} caracteres)`)
+      const extracted = await extractText(file, msg => setLoadMsg(msg))
+      setJobFile({ name: file.name, content: extracted, status: 'ready' })
+      notify('✓', 'Perfil cargado — extrayendo estructura y competencias…')
+      // Fase 1: ambas extracciones en paralelo
+      await Promise.all([
+        extractProfileStructure(extracted, file.name),
+        extractCompetencyDict(extracted, file.name),
+      ])
     } catch (e) {
       setJobFile({ name: file.name, content: '', status: 'error' })
-      notify('✗', `Error al leer: ${e.message}`, 'e')
+      notify('✗', `Error: ${e.message}`, 'e')
     }
   }
 
-  // ── load CV files ────────────────────────────────────────────────────────────
+  async function callExtractAPI(systemPrompt, userContent) {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }],
+      }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    const raw = data.content?.map(b => b.text || '').join('') || ''
+    const clean = raw.replace(/```json|```/g, '').trim()
+    try { return JSON.parse(clean) }
+    catch { const m = clean.match(/\{[\s\S]*\}/); if (m) return JSON.parse(m[0]); throw new Error('JSON inválido') }
+  }
+
+  async function extractProfileStructure(content, fileName) {
+    setProfileLoading(true)
+    try {
+      const parsed = await callExtractAPI(
+        PROMPT_EXTRACT_PROFILE,
+        `DOCUMENTO DE PERFIL DE CARGO (${fileName}):
+
+${content.slice(0, 6000)}`
+      )
+      setProfileData(parsed)
+      notify('✓', `Cuadro de perfil extraído — ${parsed.nombreCargo || 'cargo identificado'}`)
+    } catch (e) {
+      notify('⚠', `Estructura del perfil: ${e.message}`, 'w')
+    } finally {
+      setProfileLoading(false)
+      setLoadMsg('')
+    }
+  }
+
+  async function extractCompetencyDict(content, fileName) {
+    setCompetencyLoading(true)
+    try {
+      const parsed = await callExtractAPI(
+        PROMPT_EXTRACT_COMPETENCIES,
+        `DOCUMENTO DE PERFIL DE CARGO (${fileName}):
+
+${content.slice(0, 6000)}`
+      )
+      setCompetencyDict(parsed)
+      notify('✓', `Diccionario de competencias listo — ${parsed.competencias?.length || 0} competencias identificadas`)
+    } catch (e) {
+      notify('⚠', `Diccionario de competencias: ${e.message}`, 'w')
+    } finally {
+      setCompetencyLoading(false)
+    }
+  }
+
   async function handleCvFiles(fileList) {
     const files = Array.from(fileList)
     if (!files.length) return
-
     const placeholders = files.map(f => ({ name: f.name, content: '', status: 'loading' }))
-    setCvFiles(prev => [...prev, ...placeholders])
-    const baseIdx = cvFiles.length
-
-    await Promise.all(files.map(async (file, i) => {
-      try {
-        const content = await extractText(file, msg => {
-          setLoadMsg(msg)
-          setCvFiles(prev => {
-            const next = [...prev]
-            next[baseIdx + i] = { ...next[baseIdx + i], status: 'ocr' }
-            return next
+    setCvFiles(prev => {
+      const base = prev.length
+      const next = [...prev, ...placeholders]
+      Promise.all(files.map(async (file, i) => {
+        try {
+          const content = await extractText(file, () => {
+            setCvFiles(p => { const n = [...p]; n[base + i] = { ...n[base + i], status: 'ocr' }; return n })
           })
-        })
-        setCvFiles(prev => {
-          const next = [...prev]
-          next[baseIdx + i] = { name: file.name, content, status: 'ready' }
-          return next
-        })
-      } catch (e) {
-        setCvFiles(prev => {
-          const next = [...prev]
-          next[baseIdx + i] = { name: file.name, content: '', status: 'error' }
-          return next
-        })
+          setCvFiles(p => { const n = [...p]; n[base + i] = { name: file.name, content, status: 'ready' }; return n })
+        } catch {
+          setCvFiles(p => { const n = [...p]; n[base + i] = { name: file.name, content: '', status: 'error' }; return n })
+        }
+      })).then(() => notify('✓', `${files.length} CV(s) procesados`))
+      return next
+    })
+  }
+
+  async function callAnalyze(modeId, cvList) {
+    const modeLabel = MODES.find(m => m.id === modeId)?.label
+    let userPrompt = ''
+
+    if (modeId === 'profile' && profileData) {
+      // Fase 2 Perfil: cuadro estructurado como referencia curricular
+      userPrompt += `CUADRO RESUMEN ESTRUCTURADO DEL CARGO (referencia de contraste):\n${JSON.stringify(profileData, null, 2)}\n\n`
+      userPrompt += `PERFIL COMPLETO ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0, 3000)}\n\nMODO: ${modeLabel}\n\n`
+    } else if (modeId === 'competencies' && competencyDict) {
+      // Fase 2 Competencias: diccionario como referencia competencial
+      userPrompt += `DICCIONARIO DE COMPETENCIAS DEL CARGO (referencia de contraste):\n${JSON.stringify(competencyDict, null, 2)}\n\n`
+      userPrompt += `PERFIL COMPLETO ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0, 2000)}\n\nMODO: ${modeLabel}\n\n`
+    } else if (modeId === 'full') {
+      // Fase 2 360°: AMBOS marcos de referencia integrados
+      if (profileData) {
+        userPrompt += `BLOQUE 1 — CUADRO RESUMEN ESTRUCTURADO DEL CARGO (referencia curricular):\n${JSON.stringify(profileData, null, 2)}\n\n`
       }
-    }))
+      if (competencyDict) {
+        userPrompt += `BLOQUE 2 — DICCIONARIO DE COMPETENCIAS DEL CARGO (referencia competencial):\n${JSON.stringify(competencyDict, null, 2)}\n\n`
+      }
+      userPrompt += `PERFIL COMPLETO ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0, 2000)}\n\nMODO: ${modeLabel}\n\n`
+    } else {
+      userPrompt += `PERFIL DEL PUESTO (${jobFile.name}):\n${jobFile.content.slice(0, 4000)}\n\nMODO: ${modeLabel}\n\n`
+    }
 
-    notify('✓', `${files.length} CV(s) procesado(s)`)
+    cvList.forEach((cv, i) => { userPrompt += `--- CV ${i + 1}: ${cv.name} ---\n${cv.content.slice(0, 3000)}\n\n` })
+
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        system: PROMPTS[modeId],
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    })
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}))
+      throw new Error(e?.error?.message || `HTTP ${res.status}`)
+    }
+    const data = await res.json()
+    const raw = data.content?.map(b => b.text || '').join('') || ''
+    const clean = raw.replace(/```json|```/g, '').trim()
+    try { return JSON.parse(clean) }
+    catch {
+      const m = clean.match(/\{[\s\S]*\}/)
+      if (m) return JSON.parse(m[0])
+      throw new Error('No se pudo interpretar la respuesta de la IA.')
+    }
   }
 
-  function removeCV(idx) {
-    setCvFiles(prev => prev.filter((_, i) => i !== idx))
-  }
+  const ready = cvFiles.filter(f => f.status === 'ready')
+  const currentMode = MODES.find(m => m.id === mode)
+  const totalCost = currentMode ? currentMode.cost * (mode === 'compare' ? ready.length : ready.length) : 0
+  const canAnalyze = jobFile?.status === 'ready' && ready.length > 0 && !loading
 
-  const costPerCV  = MODES.find(m => m.id === mode)?.cost || 2
-  const totalCost  = costPerCV * cvFiles.filter(f => f.status === 'ready').length
-  const canAnalyze = jobFile?.status === 'ready' && cvFiles.some(f => f.status === 'ready') && !loading
-
-  // ── analyze ──────────────────────────────────────────────────────────────────
   async function analyze() {
     setError('')
     if (credits < totalCost) { notify('⚠', `Necesitas ${totalCost} créditos`, 'e'); return }
-
     setLoading(true)
     setResults(null)
-    const mLabel = MODES.find(m2 => m2.id === mode)?.label
-    const ready  = cvFiles.filter(f => f.status === 'ready')
-
-    let prompt = `PERFIL DEL PUESTO (${jobFile.name}):\n${jobFile.content.slice(0, 4000)}\n\nMODO: ${mLabel}\n\n`
-    ready.forEach((cv, i) => {
-      prompt += `--- CV ${i + 1}: ${cv.name} ---\n${cv.content.slice(0, 3000)}\n\n`
-    })
-    if (mode === 'profile')      prompt += 'Enfócate en compatibilidad general con el perfil.'
-    else if (mode === 'competencies') prompt += 'Enfócate en análisis detallado de competencias técnicas y conductuales.'
-    else                          prompt += 'Análisis global completo: compatibilidad, competencias, fortalezas y brechas.'
-
-    setLoadMsg(`Analizando ${ready.length} candidato(s) con IA…`)
+    setCompareResults(null)
 
     try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      })
-
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}))
-        throw new Error(e?.error?.message || `HTTP ${res.status}`)
+      if (mode === 'compare') {
+        setLoadMsg('Ejecutando 3 análisis en paralelo…')
+        const [profileData, compData, fullData] = await Promise.all([
+          callAnalyze('profile', ready).catch(() => null),
+          callAnalyze('competencies', ready).catch(() => null),
+          callAnalyze('full', ready).catch(() => null),
+        ])
+        setCompareResults({ profile: profileData, competencies: compData, full: fullData })
+        setActiveView('compare')
+      } else {
+        setLoadMsg(`Analizando ${ready.length} candidato(s)…`)
+        const parsed = await callAnalyze(mode, ready)
+        setResults({ candidates: parsed.candidates || [], mode })
+        setActiveView('results')
       }
-
-      const data = await res.json()
-      const raw  = data.content?.map(b => b.text || '').join('') || ''
-      const clean = raw.replace(/```json|```/g, '').trim()
-
-      let parsed
-      try { parsed = JSON.parse(clean) }
-      catch {
-        const m = clean.match(/\{[\s\S]*\}/)
-        if (m) parsed = JSON.parse(m[0])
-        else throw new Error('No se pudo interpretar la respuesta de la IA.')
-      }
-
-      setResults({ candidates: parsed.candidates || [], mode })
       setCredits(c => c - totalCost)
-      notify('✓', `Análisis completado · ${totalCost} créditos usados`)
+      notify('✓', `Análisis completado · ${totalCost} créditos`)
     } catch (err) {
       setError(err.message)
       notify('✗', 'Error en el análisis', 'e')
@@ -321,241 +1360,261 @@ export default function App() {
     }
   }
 
+  function exportCSV() {
+    if (!compareResults) return
+    const { profile, competencies, full } = compareResults
+    const allNames = [...new Set([
+      ...(profile?.candidates || []).map(c => c.name),
+      ...(competencies?.candidates || []).map(c => c.name),
+      ...(full?.candidates || []).map(c => c.name),
+    ])]
+    const rows = [['Candidato', 'Score Perfil', 'Score Competencias', 'Score 360°', 'Promedio', 'Recomendación', 'Resumen']]
+    allNames.forEach(name => {
+      const p  = profile?.candidates?.find(c => c.name === name)
+      const co = competencies?.candidates?.find(c => c.name === name)
+      const f  = full?.candidates?.find(c => c.name === name)
+      const scores = [p?.score, co?.score, f?.score].filter(s => s != null)
+      const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : ''
+      const reco = f?.recommendation || co?.recommendation || p?.recommendation || ''
+      const summary = f?.summary || p?.summary || ''
+      rows.push([name, p?.score ?? '', co?.score ?? '', f?.score ?? '', avg, reco, summary])
+    })
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `MatchViaGeperex_Comparativo_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click(); URL.revokeObjectURL(url)
+    notify('⬇', 'CSV exportado correctamente')
+  }
+
   function reset() {
-    setJobFile(null); setCvFiles([]); setResults(null); setError('')
+    setJobFile(null); setProfileData(null); setCompetencyDict(null); setCvFiles([])
+    setResults(null); setCompareResults(null)
+    setError(''); setActiveView('results')
     if (jobRef.current) jobRef.current.value = ''
-    if (cvRef.current)  cvRef.current.value  = ''
-    notify('↺', 'Búsqueda reiniciada')
+    if (cvRef.current) cvRef.current.value = ''
+    notify('↺', 'Reiniciado')
   }
 
-  // ── render ────────────────────────────────────────────────────────────────────
-  const S = {
-    app: {
-      minHeight: '100vh', background: 'var(--bg)',
-      backgroundImage: 'radial-gradient(ellipse 65% 50% at 80% 5%,#2563eb18 0%,transparent 60%),radial-gradient(ellipse 45% 40% at 10% 85%,#818cf818 0%,transparent 50%)',
-    },
-    gridBg: {
-      position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-      backgroundImage: 'linear-gradient(#23283618 1px,transparent 1px),linear-gradient(90deg,#23283618 1px,transparent 1px)',
-      backgroundSize: '40px 40px',
-    },
-    header: {
-      position: 'sticky', top: 0, zIndex: 50,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '15px 32px', borderBottom: '1px solid var(--border)',
-      background: 'rgba(10,12,16,.88)', backdropFilter: 'blur(14px)',
-    },
-    main: { position: 'relative', zIndex: 5, maxWidth: 1060, margin: '0 auto', padding: '40px 18px 80px' },
-    card: {
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 'var(--rl)', padding: 22,
-    },
-    btn: (variant) => ({
-      display: 'inline-flex', alignItems: 'center', gap: 7,
-      padding: '9px 17px', borderRadius: 'var(--r)',
-      fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 13,
-      cursor: 'pointer', border: 'none', transition: 'all .2s',
-      ...(variant === 'primary' ? {
-        background: 'linear-gradient(135deg,#2563eb,#818cf8)', color: '#fff',
-        boxShadow: '0 4px 16px #2563eb2e', opacity: 1,
-      } : variant === 'ghost' ? {
-        background: 'var(--surface2)', color: 'var(--muted)',
-        border: '1px solid var(--border)',
-      } : {
-        background: 'transparent', color: 'var(--gold)',
-        border: '1px solid #f59e0b42',
-      })
-    }),
-  }
-
+  // ─── RENDER ───────────────────────────────────────────────────────────────────
   return (
     <>
-      <div style={S.app}>
-        <div style={S.gridBg} />
+      <style>{CSS}</style>
+      {/* BG */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+        background: `radial-gradient(ellipse 70% 45% at 75% 0%,${C.accentDim} 0%,transparent 60%),radial-gradient(ellipse 50% 35% at 5% 80%,${C.purpleDim} 0%,transparent 55%),${C.bg}` }} />
 
-        {/* HEADER */}
-        <header style={S.header}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg,#2563eb,#818cf8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 14, color: '#fff', boxShadow: '0 0 16px #2563eb40' }}>G</div>
-            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: -.3 }}>
-              <span style={{ color: '#2563eb' }}>#</span>Match<span style={{ color: '#38bdf8' }}>Via</span>Geperex
+      {/* HEADER */}
+      <header style={{ position: 'sticky', top: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 54, background: 'rgba(6,8,16,.9)', backdropFilter: 'blur(16px)', borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${C.accent},#38BDF8)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 13, color: '#000', boxShadow: `0 0 16px ${C.accent}40` }}>G</div>
+          <div>
+            <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 15 }}>
+              <span style={{ color: C.accent }}>#</span>Match<span style={{ color: C.muted, fontWeight: 300 }}>Via</span>Geperex
             </div>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.dim, letterSpacing: '.1em' }}>GEPEREX LIMITADA · RUT 78.110.793-K</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 100, padding: '6px 15px', fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--gold)' }}>
-            ⬡ Créditos: {credits}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 12, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '5px 13px', fontWeight: 700 }}>
+            ⬡ {credits} créditos
           </div>
-        </header>
+          <button onClick={() => setModal(true)} style={{ padding: '5px 13px', borderRadius: 100, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: "'Space Grotesk'", fontWeight: 600 }}>+ Comprar</button>
+        </div>
+      </header>
 
-        <main style={S.main}>
-          {/* HERO */}
-          <div className="fade-up" style={{ textAlign: 'center', marginBottom: 44 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2563eb12', border: '1px solid #2563eb32', borderRadius: 100, padding: '5px 13px', fontSize: 11, fontWeight: 500, color: 'var(--accent2)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>
-              ◈ Motor de Selección con IA + OCR
-            </div>
-            <h1 style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 'clamp(1.8rem,4.5vw,3rem)', letterSpacing: -2, lineHeight: 1.05, marginBottom: 13 }}>
-              <span style={{ color: '#2563eb' }}>#</span>Match<span style={{ color: 'var(--muted)', fontWeight: 400 }}>Via</span><span style={{ color: '#38bdf8' }}>Geperex</span>
-            </h1>
-            <p style={{ color: 'var(--muted)', fontSize: 15, fontWeight: 300, maxWidth: 500, margin: '0 auto', lineHeight: 1.65 }}>
-              Sube un perfil de puesto y CVs — digitales <strong style={{ color: 'var(--text)', fontWeight: 500 }}>o escaneados</strong>. El motor OCR extrae el texto automáticamente antes del análisis con IA.
-            </p>
+      {/* MAIN */}
+      <main style={{ position: 'relative', zIndex: 5, maxWidth: 1100, margin: '0 auto', padding: '36px 18px 80px' }}>
+        {/* Hero */}
+        <div className="fade-up" style={{ marginBottom: 34, textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.accentDim, border: `1px solid ${C.accent}30`, borderRadius: 100, padding: '4px 14px', fontSize: 10, color: C.accent, fontFamily: "'JetBrains Mono'", letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 14 }}>
+            ◈ Motor de Selección IA + OCR · v2.0
           </div>
+          <h1 style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 'clamp(1.9rem,5vw,3rem)', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 12 }}>
+            <span style={{ color: C.accent }}>#</span>Match<em style={{ fontStyle: 'italic', color: C.muted, fontWeight: 300 }}>Via</em><span style={{ color: '#38BDF8' }}>Geperex</span>
+          </h1>
+          <p style={{ color: C.muted, fontSize: 14, maxWidth: 480, margin: '0 auto', lineHeight: 1.7, fontWeight: 300 }}>
+            Tres modos de análisis con <strong style={{ color: C.text, fontWeight: 500 }}>prompts especializados</strong> + <strong style={{ color: C.purple, fontWeight: 500 }}>Vista Comparativa Cross-Modal</strong> con radar charts y exportación CSV.
+          </p>
+        </div>
 
-          {/* WORKFLOW GRID */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 13, marginBottom: 16 }}>
-
-            {/* STEP 1 */}
-            <div style={S.card}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 25, height: 25, borderRadius: 7, background: 'linear-gradient(135deg,#2563eb,#818cf8)', fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 12, color: '#fff', marginBottom: 11 }}>1</div>
-              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 13 }}>Perfil del Puesto</div>
-              <DropZone icon="📄" label="Subir Perfil del Puesto" hint=".txt · .pdf · .docx" multiple={false} onFiles={handleJobFiles} inputRef={jobRef} />
-              {jobFile && (
-                <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <FileItem name={jobFile.name} status={jobFile.status} onRemove={() => { setJobFile(null); if (jobRef.current) jobRef.current.value = '' }} />
-                  {jobFile.status === 'loading' && loadMsg && <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 3 }}>⟳ {loadMsg}</div>}
-                </div>
-              )}
-            </div>
-
-            {/* STEP 2 */}
-            <div style={S.card}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 25, height: 25, borderRadius: 7, background: 'linear-gradient(135deg,#2563eb,#818cf8)', fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 12, color: '#fff', marginBottom: 11 }}>2</div>
-              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 13 }}>CVs de Candidatos</div>
-              <DropZone icon="👥" label="Subir CVs" hint=".txt · .pdf · .docx · Múltiples" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
-              {cvFiles.length > 0 && (
-                <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 240, overflowY: 'auto' }}>
-                  {cvFiles.map((cv, i) => (
-                    <FileItem key={i} name={cv.name} status={cv.status} onRemove={() => removeCV(i)} />
-                  ))}
-                </div>
-              )}
-              {loadMsg && cvFiles.some(f => f.status === 'ocr' || f.status === 'loading') && (
-                <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 6 }}>⟳ {loadMsg}</div>
-              )}
-            </div>
-
-            {/* STEP 3 */}
-            <div style={S.card}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 25, height: 25, borderRadius: 7, background: 'linear-gradient(135deg,#2563eb,#818cf8)', fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 12, color: '#fff', marginBottom: 11 }}>3</div>
-              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 13 }}>Realizar Análisis</div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 13 }}>
-                {MODES.map(m => (
-                  <button key={m.id} onClick={() => setMode(m.id)} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 13px', background: mode === m.id ? '#2563eb15' : 'var(--surface2)',
-                    border: `1px solid ${mode === m.id ? 'var(--accent)' : 'var(--border)'}`,
-                    borderRadius: 'var(--r)', cursor: 'pointer', transition: 'all .2s',
-                    fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: mode === m.id ? 'var(--text)' : 'var(--muted)',
-                  }}>
-                    <span style={mode === m.id ? { color: 'var(--accent2)', fontWeight: 600 } : {}}>{m.label}</span>
-                    <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 11, color: 'var(--gold)', background: '#f59e0b13', border: '1px solid #f59e0b2e', borderRadius: 100, padding: '3px 8px' }}>{m.cost} / CV</span>
-                  </button>
-                ))}
+        {/* Workflow grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 14 }}>
+          {/* Step 1 */}
+          <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.05s' }}>
+            <StepHeader n="1" label="Perfil del Puesto" />
+            <DropZone icon="📄" label="Subir Perfil" hint=".txt · .pdf · .docx" multiple={false} onFiles={handleJobFiles} inputRef={jobRef} />
+            {jobFile && (
+              <div style={{ marginTop: 8 }}>
+                <FileItem name={jobFile.name} status={jobFile.status} onRemove={() => { setJobFile(null); if (jobRef.current) jobRef.current.value = '' }} />
+                {jobFile.status === 'loading' && loadMsg && <div style={{ fontSize: 10, color: C.amber, marginTop: 4 }}>⟳ {loadMsg}</div>}
               </div>
+            )}
+          </div>
 
-              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-                <button
-                  style={{ ...S.btn('primary'), opacity: canAnalyze ? 1 : 0.35, cursor: canAnalyze ? 'pointer' : 'not-allowed' }}
-                  disabled={!canAnalyze}
-                  onClick={analyze}
-                >
-                  {loading ? '⟳ Analizando…' : '◈ Analizar'}
+          {/* Step 2 */}
+          <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.1s' }}>
+            <StepHeader n="2" label="CVs Candidatos" />
+            <DropZone icon="👥" label="Subir CVs" hint=".txt · .pdf · .docx · Múltiples" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
+            {cvFiles.length > 0 && (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 200, overflowY: 'auto' }}>
+                {cvFiles.map((cv, i) => <FileItem key={i} name={cv.name} status={cv.status} onRemove={() => setCvFiles(p => p.filter((_, j) => j !== i))} />)}
+              </div>
+            )}
+          </div>
+
+          {/* Step 3 */}
+          <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.15s' }}>
+            <StepHeader n="3" label="Tipo de Análisis" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
+              {MODES.map(m => (
+                <button key={m.id} onClick={() => setMode(m.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: mode === m.id ? `${m.color}12` : 'transparent', border: `1px solid ${mode === m.id ? m.color + '50' : C.border}`, borderRadius: 8, cursor: 'pointer', transition: 'all .2s', fontFamily: "'Space Grotesk'", fontSize: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span>{m.icon}</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ color: mode === m.id ? m.color : C.text, fontWeight: 600 }}>{m.label}</div>
+                      <div style={{ fontSize: 10, color: C.dim, marginTop: 1 }}>{m.desc}</div>
+                    </div>
+                  </div>
+                  <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '2px 7px', fontWeight: 700, flexShrink: 0 }}>{m.cost}cr</span>
                 </button>
-                <button style={S.btn('ghost')} onClick={reset}>↺ Nueva Búsqueda</button>
-              </div>
-
-              {canAnalyze && (
-                <div style={{ marginTop: 9, fontSize: 12, color: 'var(--dim)' }}>
-                  Costo estimado: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{totalCost} créditos</span>
-                </div>
-              )}
-
-              {error && (
-                <div style={{ marginTop: 11, background: '#ef444410', border: '1px solid #ef444430', borderRadius: 'var(--r)', padding: '11px 13px', fontSize: 13, color: 'var(--red)', lineHeight: 1.5 }}>
-                  ⚠ {error}
-                </div>
-              )}
+              ))}
             </div>
-          </div>
-
-          {/* CTA row */}
-          <div style={{ textAlign: 'center', marginTop: 14, display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <button style={S.btn('gold')} onClick={() => setModal(true)}>⬡ Comprar Más Créditos</button>
-            {results && (
-              <button style={S.btn('ghost')} onClick={() => {
-                if (credits < 3) { notify('⚠', 'Necesitas 3 créditos', 'e'); return }
-                setCredits(c => c - 3); notify('✓', 'PDF exportado · 3 créditos')
-              }}>
-                ↓ Exportar PDF <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 11, color: 'var(--gold)', background: '#f59e0b13', border: '1px solid #f59e0b2e', borderRadius: 100, padding: '3px 8px', marginLeft: 4 }}>3 cr.</span>
+            <div style={{ display: 'flex', gap: 7 }}>
+              <button onClick={analyze} disabled={!canAnalyze} style={{ flex: 1, padding: '9px', borderRadius: 8, border: 'none', background: canAnalyze ? `linear-gradient(135deg,${C.accent},#38BDF8)` : C.surface, color: canAnalyze ? '#000' : C.dim, fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 13, cursor: canAnalyze ? 'pointer' : 'not-allowed', opacity: canAnalyze ? 1 : .5, transition: 'all .2s', boxShadow: canAnalyze ? `0 4px 16px ${C.accent}30` : 'none' }}>
+                {loading ? '⟳ Analizando…' : '◈ Analizar'}
               </button>
+              <button onClick={reset} style={{ padding: '9px 13px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'Space Grotesk'", fontSize: 13, fontWeight: 600 }}>↺</button>
+            </div>
+            {canAnalyze && (
+              <div style={{ marginTop: 8, fontSize: 11, color: C.dim, textAlign: 'center' }}>
+                Costo: <span style={{ color: C.gold, fontWeight: 700 }}>{totalCost} créditos</span>
+                {mode === 'compare' && <span style={{ color: C.muted }}> · 3 análisis paralelos</span>}
+              </div>
             )}
+            {error && <div style={{ marginTop: 10, background: C.redDim, border: `1px solid ${C.red}30`, borderRadius: 8, padding: '10px 12px', fontSize: 12, color: C.red, lineHeight: 1.5 }}>⚠ {error}</div>}
           </div>
+        </div>
 
-          {/* RESULTS */}
-          <div style={{ marginTop: 44 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 13, borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: -.5 }}>Resultados de Compatibilidad</div>
-                <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 2, fontWeight: 300 }}>Candidatos ordenados por puntuación de compatibilidad.</div>
+        {/* Results area */}
+        <div style={{ marginTop: 32 }}>
+
+          {/* ── PROFILE CARD: cuadro estructurado (siempre visible tras cargar perfil) */}
+          {(profileData || profileLoading) && (
+            <div style={{ marginBottom: 12 }}>
+              <ProfileCard profile={profileData} loading={profileLoading} />
+            </div>
+          )}
+
+          {/* ── COMPETENCY DICT CARD: diccionario de competencias */}
+          {(competencyDict || competencyLoading) && (
+            <div style={{ marginBottom: 20 }}>
+              <CompetencyDictCard dict={competencyDict} loading={competencyLoading} />
+            </div>
+          )}
+
+          {(results || compareResults) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+              {results && (
+                <button onClick={() => setActiveView('results')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'results' ? C.accent : C.border}`, background: activeView === 'results' ? C.accentDim : 'transparent', color: activeView === 'results' ? C.accent : C.muted, fontFamily: "'Space Grotesk'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  📋 Resultados
+                </button>
+              )}
+              {compareResults && (
+                <button onClick={() => setActiveView('compare')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'compare' ? C.purple : C.border}`, background: activeView === 'compare' ? C.purpleDim : 'transparent', color: activeView === 'compare' ? C.purple : C.muted, fontFamily: "'Space Grotesk'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  ⚡ Vista Comparativa
+                </button>
+              )}
+            </div>
+          )}
+
+          {loading && (
+            <div className="glow-card" style={{ padding: '48px 28px', textAlign: 'center' }}>
+              <div className="spinner" style={{ margin: '0 auto 16px' }} />
+              <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{loadMsg || 'Procesando…'}</div>
+              {mode === 'compare' && <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados ejecutándose en paralelo</div>}
+            </div>
+          )}
+
+          {!loading && activeView === 'results' && results && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ marginBottom: 6 }}>
+                <h2 style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 20 }}>
+                  {MODES.find(m => m.id === results.mode)?.label}
+                </h2>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{results.candidates.length} candidato(s) evaluado(s)</div>
+              </div>
+              {results.candidates.map((c, i) => <CandidateCard key={i} candidate={c} idx={i} />)}
+            </div>
+          )}
+
+          {!loading && activeView === 'compare' && compareResults && (
+            <div>
+              <div style={{ marginBottom: 20 }}>
+                <h2 style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Vista Comparativa Cross-Modal</h2>
+                <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados · Comparación matricial · Radar charts · Exportación CSV</div>
+              </div>
+              <ComparativePanel compareResults={compareResults} onExportCSV={exportCSV} />
+            </div>
+          )}
+
+          {!loading && !results && !compareResults && (
+            <div style={{ textAlign: 'center', padding: '52px 24px', background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 14 }}>
+              <div style={{ fontSize: 40, opacity: .2, marginBottom: 14 }}>◈</div>
+              <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 17, color: C.muted, marginBottom: 8 }}>Sin resultados aún</div>
+              <div style={{ color: C.dim, fontSize: 13, maxWidth: 380, margin: '0 auto', lineHeight: 1.7 }}>
+                Sube archivos, elige análisis y presiona <strong style={{ color: C.text }}>Analizar</strong>.<br />
+                Para la <strong style={{ color: C.purple }}>Vista Comparativa ⚡</strong>, selecciona ese modo.<br /><br />
+                <span style={{ fontSize: 11, color: C.accent }}>✓ OCR activo · 3 prompts especializados · Radar SVG · CSV exportable</span>
               </div>
             </div>
+          )}
+        </div>
+      </main>
 
-            {loading ? (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: '48px 28px', textAlign: 'center' }}>
-                <div style={{ width: 38, height: 38, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin .8s linear infinite', margin: '0 auto 14px' }} />
-                <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 5 }}>{loadMsg || 'Procesando…'}</div>
-                <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 300 }}>La IA está evaluando compatibilidad y competencias…</div>
-              </div>
-            ) : results ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                {results.candidates.map((c, i) => <CandidateCard key={i} candidate={c} idx={i} mode={results.mode} />)}
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '52px 24px', background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 'var(--rl)' }}>
-                <div style={{ fontSize: 42, opacity: .3, marginBottom: 13 }}>⬡</div>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--muted)', marginBottom: 7 }}>Sin resultados aún</div>
-                <div style={{ color: 'var(--dim)', fontSize: 13, maxWidth: 340, margin: '0 auto', lineHeight: 1.6 }}>
-                  Sube archivos, elige un tipo de análisis y presiona <strong style={{ color: 'var(--text)' }}>Analizar</strong>.<br /><br />
-                  ¡Comienza con <strong style={{ color: 'var(--gold)' }}>20 créditos</strong> de cortesía!<br /><br />
-                  <span style={{ fontSize: 12, color: 'var(--accent2)' }}>✓ Soporte OCR para PDFs escaneados activado</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </main>
+      {/* FOOTER */}
+      <footer style={{ position: 'relative', zIndex: 5, textAlign: 'center', padding: '18px 24px', borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.dim }}>
+        © {new Date().getFullYear()} <strong style={{ color: C.muted }}>Geperex Limitada</strong> · RUT 78.110.793-K · #MatchViaGeperex · Powered by Claude AI
+      </footer>
 
-        <footer style={{ position: 'relative', zIndex: 5, textAlign: 'center', padding: 22, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--dim)' }}>
-          <strong style={{ color: 'var(--muted)' }}>© 2025 #MatchViaGeperex.</strong> Todos los derechos reservados. · Creación de <strong style={{ color: 'var(--muted)' }}>GEPEREX SpA</strong>
-        </footer>
-      </div>
-
-      {/* MODAL CRÉDITOS */}
+      {/* MODAL */}
       {modal && (
-        <div onClick={e => { if (e.target === e.currentTarget) setModal(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(10,12,16,.82)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--rl)', padding: 30, maxWidth: 400, width: '100%', boxShadow: '0 20px 70px rgba(0,0,0,.55)' }}>
-            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: -.5, marginBottom: 9 }}>⬡ Comprar Créditos</div>
-            <div style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, marginBottom: 20, fontWeight: 300 }}>Los créditos permiten realizar análisis con IA. Elige el paquete que mejor se adapte a tus necesidades.</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 20 }}>
+        <div onClick={e => { if (e.target === e.currentTarget) setModal(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,16,.87)', backdropFilter: 'blur(10px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+          <div className="glow-card" style={{ padding: 28, maxWidth: 370, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+            <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>⬡ Comprar Créditos</div>
+            <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.6, marginBottom: 20, fontWeight: 300 }}>Elige el paquete para tus procesos de selección.</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 18 }}>
               {[[50,'$4.990'],[150,'$12.990'],[500,'$34.990']].map(([amt, price]) => (
-                <div key={amt} onClick={() => { setCredits(c => c + amt); setModal(false); notify('⬡', `+${amt} créditos añadidos`) }} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '13px 9px', textAlign: 'center', cursor: 'pointer', transition: 'all .2s' }}>
-                  <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 20, color: 'var(--gold)' }}>{amt}</div>
-                  <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 1 }}>créditos</div>
-                  <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 5, fontWeight: 500 }}>{price}</div>
+                <div key={amt} onClick={() => { setCredits(c => c + amt); setModal(false); notify('⬡', `+${amt} créditos añadidos`) }}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 10px', textAlign: 'center', cursor: 'pointer', transition: 'border-color .2s' }}>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 22, color: C.gold }}>{amt}</div>
+                  <div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>créditos</div>
+                  <div style={{ fontSize: 13, color: C.muted, marginTop: 6, fontWeight: 500 }}>{price}</div>
                 </div>
               ))}
             </div>
-            <div style={{ height: 1, background: 'var(--border)', margin: '18px 0' }} />
-            <button style={{ ...S.btn('ghost'), width: '100%', justifyContent: 'center' }} onClick={() => setModal(false)}>Cerrar</button>
+            <button onClick={() => setModal(false)} style={{ width: '100%', padding: '9px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'Space Grotesk'", fontWeight: 600 }}>Cerrar</button>
           </div>
         </div>
       )}
 
       {/* TOAST */}
       {toast && (
-        <div style={{ position: 'fixed', bottom: 22, right: 22, background: 'var(--surface)', border: `1px solid ${toast.type === 's' ? '#10b98138' : '#ef444438'}`, borderRadius: 'var(--r)', padding: '11px 17px', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: 'var(--text)', zIndex: 200, boxShadow: '0 8px 34px rgba(0,0,0,.55)', maxWidth: 320, animation: 'slideIn .3s ease' }}>
+        <div style={{ position: 'fixed', bottom: 20, right: 20, background: C.card, border: `1px solid ${toast.type === 's' ? C.green + '40' : C.red + '40'}`, borderRadius: 10, padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: C.text, zIndex: 300, boxShadow: '0 8px 40px rgba(0,0,0,.6)', maxWidth: 320, animation: 'slideIn .3s ease' }}>
           <span>{toast.icon}</span><span>{toast.msg}</span>
         </div>
       )}
     </>
+  )
+}
+
+// ─── STEP HEADER (inline helper) ─────────────────────────────────────────────
+function StepHeader({ n, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+      <div style={{ width: 22, height: 22, borderRadius: 6, background: `linear-gradient(135deg,${C.accent},#38BDF8)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#000', fontFamily: "'JetBrains Mono'", flexShrink: 0 }}>{n}</div>
+      <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 13 }}>{label}</div>
+    </div>
   )
 }
