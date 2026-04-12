@@ -1181,11 +1181,9 @@ export default function App() {
       const extracted = await extractText(file, msg => setLoadMsg(msg))
       setJobFile({ name: file.name, content: extracted, status: 'ready' })
       notify('✓', 'Perfil cargado — extrayendo estructura y competencias…')
-      // Fase 1: ambas extracciones en paralelo
-      await Promise.all([
-        extractProfileStructure(extracted, file.name),
-        extractCompetencyDict(extracted, file.name),
-      ])
+      // Fase 1: extracciones secuenciales (evita límite de concurrencia Netlify)
+      await extractProfileStructure(extracted, file.name)
+      await extractCompetencyDict(extracted, file.name)
     } catch (e) {
       setJobFile({ name: file.name, content: '', status: 'error' })
       notify('✗', `Error: ${e.message}`, 'e')
@@ -1301,7 +1299,7 @@ ${content.slice(0, 4000)}`
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
+        max_tokens: 2048,
         system: PROMPTS[modeId],
         messages: [{ role: 'user', content: userPrompt }],
       }),
@@ -1335,12 +1333,13 @@ ${content.slice(0, 4000)}`
 
     try {
       if (mode === 'compare') {
-        setLoadMsg('Ejecutando 3 análisis en paralelo…')
-        const [profileData, compData, fullData] = await Promise.all([
-          callAnalyze('profile', ready).catch(() => null),
-          callAnalyze('competencies', ready).catch(() => null),
-          callAnalyze('full', ready).catch(() => null),
-        ])
+        // Secuencial para respetar límite de concurrencia de Netlify gratuito
+        setLoadMsg('Ejecutando análisis de perfil (1/3)…')
+        const profileData = await callAnalyze('profile', ready).catch(() => null)
+        setLoadMsg('Ejecutando análisis de competencias (2/3)…')
+        const compData    = await callAnalyze('competencies', ready).catch(() => null)
+        setLoadMsg('Ejecutando análisis 360° (3/3)…')
+        const fullData    = await callAnalyze('full', ready).catch(() => null)
         setCompareResults({ profile: profileData, competencies: compData, full: fullData })
         setActiveView('compare')
       } else {
