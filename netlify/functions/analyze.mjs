@@ -13,7 +13,7 @@ export default async (req) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   }
 
@@ -23,10 +23,7 @@ export default async (req) => {
       JSON.stringify({ error: "API key no configurada en variables de entorno de Netlify." }),
       {
         status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       }
     );
   }
@@ -39,6 +36,11 @@ export default async (req) => {
       status: 400,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
+  }
+
+  // Cap max_tokens para reducir tiempo de respuesta
+  if (body.max_tokens && body.max_tokens > 2048) {
+    body.max_tokens = 2048;
   }
 
   try {
@@ -77,4 +79,5 @@ export default async (req) => {
 
 export const config = {
   path: "/api/analyze",
+  timeout: 26,        // Netlify Pro permite hasta 26s; gratuito hasta 10s
 };
