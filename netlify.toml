@@ -5,6 +5,11 @@
 [functions]
   directory = "netlify/functions"
 
+# Edge Function — sin límite de tiempo (reemplaza /.netlify/functions/analyze)
+[[edge_functions]]
+  path = "/api/analyze"
+  function = "analyze"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
