@@ -3,26 +3,26 @@ import { extractText } from './extractor.js'
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
-  bg:       '#060810',
-  surface:  '#0C1018',
-  card:     '#101520',
-  border:   '#1A2535',
-  borderHi: '#253650',
-  accent:   '#0EA5E9',
-  accentDim:'rgba(14,165,233,0.12)',
-  gold:     '#EAB308',
-  goldDim:  'rgba(234,179,8,0.12)',
-  green:    '#10B981',
-  greenDim: 'rgba(16,185,129,0.12)',
-  red:      '#F43F5E',
-  redDim:   'rgba(244,63,94,0.12)',
-  amber:    '#F59E0B',
-  amberDim: 'rgba(245,158,11,0.12)',
-  purple:   '#A855F7',
-  purpleDim:'rgba(168,85,247,0.12)',
-  text:     '#E2EAF4',
-  muted:    '#7A9BB8',
-  dim:      '#3A5570',
+  bg:       '#0A0A0B',
+  surface:  '#111113',
+  card:     '#161618',
+  border:   '#242428',
+  borderHi: '#38383E',
+  accent:   '#4F7DF3',
+  accentDim:'rgba(79,125,243,0.10)',
+  gold:     '#C9A84C',
+  goldDim:  'rgba(201,168,76,0.10)',
+  green:    '#2ECC71',
+  greenDim: 'rgba(46,204,113,0.10)',
+  red:      '#E5534B',
+  redDim:   'rgba(229,83,75,0.10)',
+  amber:    '#D4973A',
+  amberDim: 'rgba(212,151,58,0.10)',
+  purple:   '#7B68EE',
+  purpleDim:'rgba(123,104,238,0.10)',
+  text:     '#ECECED',
+  muted:    '#8B8B95',
+  dim:      '#3E3E47',
 }
 
 // ─── PROMPT: EXTRACCIÓN ESTRUCTURADA DEL PERFIL (Fase 1) ─────────────────────
@@ -339,10 +339,10 @@ const RECO_CFG = {
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:${C.bg};color:${C.text};font-family:'Space Grotesk',sans-serif;-webkit-font-smoothing:antialiased}
+body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:${C.surface}}
 ::-webkit-scrollbar-thumb{background:${C.border};border-radius:3px}
@@ -354,9 +354,9 @@ body{background:${C.bg};color:${C.text};font-family:'Space Grotesk',sans-serif;-
 .fade-up{animation:fadeUp .45s ease both}
 .slide-in{animation:slideIn .35s ease both}
 .glow-card{position:relative;background:${C.card};border:1px solid ${C.border};border-radius:12px;transition:border-color .25s,box-shadow .25s}
-.glow-card:hover{border-color:${C.borderHi};box-shadow:0 0 0 1px rgba(14,165,233,.07),0 8px 28px rgba(0,0,0,.35)}
-.reco-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
-.score-ring{display:flex;align-items:center;justify-content:center;flex-direction:column;width:68px;height:68px;border-radius:50%;border:3px solid;font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;flex-shrink:0}
+.glow-card:hover{border-color:${C.borderHi};box-shadow:0 4px 24px rgba(0,0,0,.5)}
+.reco-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:'DM Mono',monospace}
+.score-ring{display:flex;align-items:center;justify-content:center;flex-direction:column;width:68px;height:68px;border-radius:50%;border:3px solid;font-family:'DM Mono',monospace;font-size:19px;font-weight:700;flex-shrink:0}
 .bar-row{display:grid;grid-template-columns:130px 1fr 36px;align-items:center;gap:9px;margin-bottom:6px}
 .bar-track{height:5px;background:${C.border};border-radius:100px;overflow:hidden}
 .bar-fill{height:100%;border-radius:100px;transition:width 1.1s ease}
@@ -365,7 +365,7 @@ body{background:${C.bg};color:${C.text};font-family:'Space Grotesk',sans-serif;-
 .cmp-table td{padding:11px 14px;border-bottom:1px solid ${C.border};vertical-align:middle}
 .cmp-table tr:last-child td{border-bottom:none}
 .cmp-table tr:hover td{background:rgba(255,255,255,.018)}
-.spinner{width:30px;height:30px;border:3px solid ${C.border};border-top-color:${C.accent};border-radius:50%;animation:spin .7s linear infinite}
+.spinner{width:30px;height:30px;border:2px solid ${C.border};border-top-color:${C.accent};border-radius:50%;animation:spin .7s linear infinite}
 `
 
 // ─── RADAR CHART ──────────────────────────────────────────────────────────────
@@ -419,8 +419,8 @@ function RadarChart({ competencies, color = C.accent, size = 210 }) {
         const label = name.length > 13 ? name.slice(0, 12) + '…' : name
         return (
           <g key={i}>
-            <text x={lx} y={ly - 5} textAnchor={anchor} fontSize="9" fontFamily="'JetBrains Mono'" fill={C.muted} fontWeight="500">{label}</text>
-            <text x={lx} y={ly + 7} textAnchor={anchor} fontSize="10" fontFamily="'JetBrains Mono'" fill={color} fontWeight="700">{val}</text>
+            <text x={lx} y={ly - 5} textAnchor={anchor} fontSize="9" fontFamily="'DM Mono'" fill={C.muted} fontWeight="500">{label}</text>
+            <text x={lx} y={ly + 7} textAnchor={anchor} fontSize="10" fontFamily="'DM Mono'" fill={color} fontWeight="700">{val}</text>
           </g>
         )
       })}
@@ -456,7 +456,7 @@ function BarRow({ label, value }) {
       <div className="bar-track">
         <div className="bar-fill" style={{ width: `${value}%`, background: col }} />
       </div>
-      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono'", color: col, fontWeight: 700, textAlign: 'right' }}>{value}</span>
+      <span style={{ fontSize: 11, fontFamily: "'DM Mono'", color: col, fontWeight: 700, textAlign: 'right' }}>{value}</span>
     </div>
   )
 }
@@ -506,7 +506,7 @@ function ProfileFieldRow({ label, value, mono = false }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '148px 1fr', gap: 8, padding: '7px 0', borderBottom: `1px solid ${C.border}` }}>
       <span style={{ fontSize: 10, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', paddingTop: 1 }}>{label}</span>
-      <span style={{ fontSize: 12, color: mono ? C.accent : C.text, fontFamily: mono ? "'JetBrains Mono'" : "'Space Grotesk'", lineHeight: 1.55 }}>{display}</span>
+      <span style={{ fontSize: 12, color: mono ? C.accent : C.text, fontFamily: mono ? "'DM Mono'" : "'DM Sans'", lineHeight: 1.55 }}>{display}</span>
     </div>
   )
 }
@@ -518,7 +518,7 @@ function ProfileCard({ profile, loading }) {
     <div className="glow-card fade-up" style={{ padding: '18px 22px', borderLeft: `3px solid ${C.accent}`, display: 'flex', alignItems: 'center', gap: 12 }}>
       <div className="spinner" />
       <div>
-        <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 13, color: C.accent }}>Extrayendo estructura del perfil…</div>
+        <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13, color: C.accent }}>Extrayendo estructura del perfil…</div>
         <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>La IA está leyendo el documento y organizando los requisitos del cargo</div>
       </div>
     </div>
@@ -530,12 +530,12 @@ function ProfileCard({ profile, loading }) {
     <div className="glow-card fade-up" style={{ borderLeft: `3px solid ${C.accent}`, marginBottom: 4 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: collapsed ? 'none' : `1px solid ${C.border}`, cursor: 'pointer' }} onClick={() => setCollapsed(c => !c)}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentDim, border: `1px solid ${C.accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📋</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(79,125,243,0.08)', border: `1px solid rgba(79,125,243,0.2)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📋</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 9, color: C.accent, fontFamily: "'JetBrains Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
+          <div style={{ fontSize: 9, color: C.accent, fontFamily: "'DM Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
             Cuadro Resumen del Cargo · Referencia de Contraste
           </div>
-          <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1, color: C.text }}>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1, color: C.text }}>
             {profile.nombreCargo || 'Cargo no identificado'}
           </div>
           {(profile.area || profile.dependencia) && (
@@ -617,7 +617,7 @@ function ProfileCard({ profile, loading }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {profile.funciones.slice(0, 6).map((f, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '8px 10px' }}>
-                      <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.accent, fontWeight: 700, minWidth: 18, paddingTop: 1 }}>{String(i + 1).padStart(2, '0')}</span>
+                      <span style={{ fontFamily: "'DM Mono'", fontSize: 10, color: C.accent, fontWeight: 700, minWidth: 18, paddingTop: 1 }}>{String(i + 1).padStart(2, '0')}</span>
                       <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{f}</span>
                     </div>
                   ))}
@@ -707,7 +707,7 @@ function MatchDetailTable({ matchDetail }) {
                   <td style={{ padding: '9px 12px', color: C.dim, fontSize: 11, lineHeight: 1.5 }}>{val.requerido || '—'}</td>
                   <td style={{ padding: '9px 12px', color: C.text, fontSize: 11, lineHeight: 1.5 }}>{val.candidato || '—'}</td>
                   <td style={{ padding: '9px 12px', textAlign: 'center' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30`, borderRadius: 100, padding: '3px 8px', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono'", color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30`, borderRadius: 100, padding: '3px 8px', whiteSpace: 'nowrap' }}>
                       {cfg.icon} {val.cumple}
                     </span>
                   </td>
@@ -750,7 +750,7 @@ function CompetencyDictCard({ dict, loading }) {
     <div className="glow-card fade-up" style={{ padding: '18px 22px', borderLeft: `3px solid ${C.gold}`, display: 'flex', alignItems: 'center', gap: 12 }}>
       <div className="spinner" />
       <div>
-        <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 13, color: C.gold }}>Extrayendo diccionario de competencias…</div>
+        <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13, color: C.gold }}>Extrayendo diccionario de competencias…</div>
         <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>Identificando competencias técnicas y conductuales del cargo</div>
       </div>
     </div>
@@ -771,10 +771,10 @@ function CompetencyDictCard({ dict, loading }) {
         onClick={() => setCollapsed(c => !c)}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.goldDim, border: `1px solid ${C.gold}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>🧠</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 9, color: C.gold, fontFamily: "'JetBrains Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
+          <div style={{ fontSize: 9, color: C.gold, fontFamily: "'DM Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
             Diccionario de Competencias · Referencia de Contraste
           </div>
-          <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.1, color: C.text }}>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.1, color: C.text }}>
             {dict.nombreCargo || 'Cargo'} — {comps.length} competencias identificadas
           </div>
         </div>
@@ -783,7 +783,7 @@ function CompetencyDictCard({ dict, loading }) {
           {Object.entries(byTipo).map(([tipo, list]) => {
             const cfg = TIPO_CFG[tipo] || TIPO_CFG['TECNICA']
             return (
-              <span key={tipo} style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30`, borderRadius: 100, padding: '3px 9px' }}>
+              <span key={tipo} style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono'", color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30`, borderRadius: 100, padding: '3px 9px' }}>
                 {tipo} ×{list.length}
               </span>
             )
@@ -807,10 +807,10 @@ function CompetencyDictCard({ dict, loading }) {
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: isOpen ? 10 : 0 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: tipoCfg.color, background: tipoCfg.bg, border: `1px solid ${tipoCfg.color}25`, borderRadius: 100, padding: '2px 7px' }}>{comp.tipo}</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: nivelCfg.color, background: nivelCfg.bg, border: `1px solid ${nivelCfg.color}25`, borderRadius: 100, padding: '2px 7px' }}>{nivelCfg.dot} {comp.nivelRequerido}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono'", color: tipoCfg.color, background: tipoCfg.bg, border: `1px solid ${tipoCfg.color}25`, borderRadius: 100, padding: '2px 7px' }}>{comp.tipo}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono'", color: nivelCfg.color, background: nivelCfg.bg, border: `1px solid ${nivelCfg.color}25`, borderRadius: 100, padding: '2px 7px' }}>{nivelCfg.dot} {comp.nivelRequerido}</span>
                         {comp.fuente === 'INFERIDA' && (
-                          <span style={{ fontSize: 9, color: C.dim, fontFamily: "'JetBrains Mono'", border: `1px solid ${C.border}`, borderRadius: 100, padding: '2px 6px' }}>INFERIDA</span>
+                          <span style={{ fontSize: 9, color: C.dim, fontFamily: "'DM Mono'", border: `1px solid ${C.border}`, borderRadius: 100, padding: '2px 6px' }}>INFERIDA</span>
                         )}
                       </div>
                       <div style={{ fontWeight: 700, fontSize: 13, color: C.text, lineHeight: 1.3 }}>{comp.nombre}</div>
@@ -876,18 +876,18 @@ function CompetencyContrastTable({ competencyContrast }) {
                 <tr key={i} style={{ borderTop: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.012)' }}>
                   <td style={{ padding: '9px 12px', fontWeight: 700, color: C.text, fontSize: 12, lineHeight: 1.4 }}>{row.competencia}</td>
                   <td style={{ padding: '9px 12px', textAlign: 'center' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: nivelReqCfg.color }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono'", color: nivelReqCfg.color }}>
                       {nivelReqCfg.dot} {row.nivelRequerido}
                     </span>
                   </td>
                   <td style={{ padding: '9px 12px', textAlign: 'center' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono'", color: nivelObsCfg.color }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono'", color: nivelObsCfg.color }}>
                       {nivelObsCfg.dot || '○'} {row.nivelObservado}
                     </span>
                   </td>
                   <td style={{ padding: '9px 12px', color: C.muted, fontSize: 11, lineHeight: 1.6 }}>{row.evidencia}</td>
                   <td style={{ padding: '9px 12px', textAlign: 'center' }}>
-                    <span style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 14, color: scoreColor(row.score) }}>{row.score}</span>
+                    <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 14, color: scoreColor(row.score) }}>{row.score}</span>
                   </td>
                   <td style={{ padding: '9px 12px', textAlign: 'center' }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: brechaCfg.color, whiteSpace: 'nowrap' }}>
@@ -917,23 +917,23 @@ function CandidateCard({ candidate: c, idx }) {
         <ScoreRing score={c.score} />
         <div style={{ flex: 1, minWidth: 0 }}>
           {idx < 3 && (
-            <div style={{ fontSize: 9, fontWeight: 700, color: rankColors[idx], letterSpacing: '.1em', textTransform: 'uppercase', fontFamily: "'JetBrains Mono'", marginBottom: 3 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: rankColors[idx], letterSpacing: '.1em', textTransform: 'uppercase', fontFamily: "'DM Mono'", marginBottom: 3 }}>
               {rankLabels[idx]}
             </div>
           )}
-          <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.2, marginBottom: 5 }}>{c.name || 'Candidato'}</div>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.2, marginBottom: 5 }}>{c.name || 'Candidato'}</div>
           <div style={{ fontSize: 11, color: C.dim, marginBottom: 7 }}>{c.fileName}</div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
             {c.recommendation && <RecoBadge reco={c.recommendation} />}
             {c.scoreProfile != null && (
-              <span style={{ fontSize: 10, color: C.muted, fontFamily: "'JetBrains Mono'" }}>
+              <span style={{ fontSize: 10, color: C.muted, fontFamily: "'DM Mono'" }}>
                 Perfil: <strong style={{ color: scoreColor(c.scoreProfile) }}>{c.scoreProfile}</strong>
                 {' '}· Compet: <strong style={{ color: scoreColor(c.scoreCompetencies) }}>{c.scoreCompetencies}</strong>
               </span>
             )}
           </div>
         </div>
-        <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, cursor: 'pointer', color: C.dim, fontSize: 11, padding: '5px 9px', fontFamily: "'JetBrains Mono'", transition: 'all .2s' }}>
+        <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, cursor: 'pointer', color: C.dim, fontSize: 11, padding: '5px 9px', fontFamily: "'DM Mono'", transition: 'all .2s' }}>
           {open ? '▾ ocultar' : '▸ ver'}
         </button>
       </div>
@@ -1016,7 +1016,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
     padding: '7px 16px', borderRadius: 7, border: `1px solid ${active ? C.accent : C.border}`,
     background: active ? C.accentDim : 'transparent',
     color: active ? C.accent : C.muted,
-    fontFamily: "'Space Grotesk'", fontSize: 12, fontWeight: 600,
+    fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600,
     cursor: 'pointer', transition: 'all .2s',
   })
 
@@ -1026,7 +1026,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         {[{ id: 'matrix', label: '📊 Matriz Cruzada' }, { id: 'radars', label: '🕸 Radares' }, { id: 'ranking', label: '🏆 Ranking Final' }]
           .map(t => <button key={t.id} onClick={() => setTab(t.id)} style={tabStyle(tab === t.id)}>{t.label}</button>)}
-        <button onClick={onExportCSV} style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: 7, border: `1px solid ${C.green}40`, background: C.greenDim, color: C.green, fontFamily: "'Space Grotesk'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={onExportCSV} style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: 7, border: `1px solid ${C.green}40`, background: C.greenDim, color: C.green, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
           ⬇ Exportar CSV
         </button>
       </div>
@@ -1051,20 +1051,20 @@ function ComparativePanel({ compareResults, onExportCSV }) {
                 return (
                   <tr key={i}>
                     <td>
-                      <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 14 }}>{row.name}</div>
-                      {i < 3 && <div style={{ fontSize: 9, color: ['#EAB308','#94A3B8','#CD8B45'][i], fontFamily: "'JetBrains Mono'", fontWeight: 700, letterSpacing: '.08em', marginTop: 2 }}>
+                      <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14 }}>{row.name}</div>
+                      {i < 3 && <div style={{ fontSize: 9, color: ['#EAB308','#94A3B8','#CD8B45'][i], fontFamily: "'DM Mono'", fontWeight: 700, letterSpacing: '.08em', marginTop: 2 }}>
                         {['🥇 MEJOR MATCH','🥈 2° LUGAR','🥉 3° LUGAR'][i]}
                       </div>}
                     </td>
                     {[row.p?.score, row.co?.score, row.f?.score].map((s, j) => (
                       <td key={j} style={{ textAlign: 'center' }}>
                         {s != null
-                          ? <span style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 16, color: scoreColor(s) }}>{s}</span>
+                          ? <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 16, color: scoreColor(s) }}>{s}</span>
                           : <span style={{ color: C.dim, fontSize: 12 }}>—</span>}
                       </td>
                     ))}
                     <td style={{ textAlign: 'center' }}>
-                      <span style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 17, color: scoreColor(row.avg) }}>{row.avg}</span>
+                      <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 17, color: scoreColor(row.avg) }}>{row.avg}</span>
                     </td>
                     <td>{reco && <RecoBadge reco={reco} />}</td>
                   </tr>
@@ -1082,7 +1082,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
             const comps = row.f?.competencies || row.co?.competencies
             if (!comps) return (
               <div key={i} className="glow-card" style={{ padding: 18, textAlign: 'center' }}>
-                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{row.name}</div>
+                <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{row.name}</div>
                 <div style={{ fontSize: 12, color: C.dim }}>Sin datos de competencias</div>
               </div>
             )
@@ -1090,10 +1090,10 @@ function ComparativePanel({ compareResults, onExportCSV }) {
             const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
             return (
               <div key={i} className="glow-card" style={{ padding: '18px', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{row.name}</div>
+                <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{row.name}</div>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                   {reco && <RecoBadge reco={reco} />}
-                  <span style={{ fontFamily: "'JetBrains Mono'", color: scoreColor(row.avg), fontWeight: 700, fontSize: 13 }}>AVG: {row.avg}</span>
+                  <span style={{ fontFamily: "'DM Mono'", color: scoreColor(row.avg), fontWeight: 700, fontSize: 13 }}>AVG: {row.avg}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <RadarChart competencies={comps} color={colors[i % colors.length]} size={225} />
@@ -1113,9 +1113,9 @@ function ComparativePanel({ compareResults, onExportCSV }) {
             const rankColor = ['#EAB308','#94A3B8','#CD8B45'][i] || C.border
             return (
               <div key={i} className="glow-card" style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, borderLeft: `3px solid ${rankColor}` }}>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 22, color: C.dim, minWidth: 32 }}>#{i + 1}</div>
+                <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 22, color: C.dim, minWidth: 32 }}>#{i + 1}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>{row.name}</div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>{row.name}</div>
                   {summary && <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{summary}</div>}
                 </div>
                 <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1127,7 +1127,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
                   ].map(({ label, score, color }) => (
                     <div key={label} style={{ textAlign: 'center', minWidth: 42 }}>
                       <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>{label}</div>
-                      <div style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 17, color: score != null ? scoreColor(score) : C.dim }}>
+                      <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 17, color: score != null ? scoreColor(score) : C.dim }}>
                         {score ?? '—'}
                       </div>
                     </div>
@@ -1218,7 +1218,7 @@ export default function App() {
         PROMPT_EXTRACT_PROFILE,
         `DOCUMENTO DE PERFIL DE CARGO (${fileName}):
 
-${content.slice(0, 6000)}`
+${content.slice(0, 4000)}`
       )
       setProfileData(parsed)
       notify('✓', `Cuadro de perfil extraído — ${parsed.nombreCargo || 'cargo identificado'}`)
@@ -1237,7 +1237,7 @@ ${content.slice(0, 6000)}`
         PROMPT_EXTRACT_COMPETENCIES,
         `DOCUMENTO DE PERFIL DE CARGO (${fileName}):
 
-${content.slice(0, 6000)}`
+${content.slice(0, 4000)}`
       )
       setCompetencyDict(parsed)
       notify('✓', `Diccionario de competencias listo — ${parsed.competencias?.length || 0} competencias identificadas`)
@@ -1276,7 +1276,7 @@ ${content.slice(0, 6000)}`
     if (modeId === 'profile' && profileData) {
       // Fase 2 Perfil: cuadro estructurado como referencia curricular
       userPrompt += `CUADRO RESUMEN ESTRUCTURADO DEL CARGO (referencia de contraste):\n${JSON.stringify(profileData, null, 2)}\n\n`
-      userPrompt += `PERFIL COMPLETO ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0, 3000)}\n\nMODO: ${modeLabel}\n\n`
+      userPrompt += `PERFIL COMPLETO ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0, 2000)}\n\nMODO: ${modeLabel}\n\n`
     } else if (modeId === 'competencies' && competencyDict) {
       // Fase 2 Competencias: diccionario como referencia competencial
       userPrompt += `DICCIONARIO DE COMPETENCIAS DEL CARGO (referencia de contraste):\n${JSON.stringify(competencyDict, null, 2)}\n\n`
@@ -1291,10 +1291,10 @@ ${content.slice(0, 6000)}`
       }
       userPrompt += `PERFIL COMPLETO ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0, 2000)}\n\nMODO: ${modeLabel}\n\n`
     } else {
-      userPrompt += `PERFIL DEL PUESTO (${jobFile.name}):\n${jobFile.content.slice(0, 4000)}\n\nMODO: ${modeLabel}\n\n`
+      userPrompt += `PERFIL DEL PUESTO (${jobFile.name}):\n${jobFile.content.slice(0, 2000)}\n\nMODO: ${modeLabel}\n\n`
     }
 
-    cvList.forEach((cv, i) => { userPrompt += `--- CV ${i + 1}: ${cv.name} ---\n${cv.content.slice(0, 3000)}\n\n` })
+    cvList.forEach((cv, i) => { userPrompt += `--- CV ${i + 1}: ${cv.name} ---\n${cv.content.slice(0, 1800)}\n\n` })
 
     const res = await fetch('/api/analyze', {
       method: 'POST',
@@ -1403,24 +1403,24 @@ ${content.slice(0, 6000)}`
       <style>{CSS}</style>
       {/* BG */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-        background: `radial-gradient(ellipse 70% 45% at 75% 0%,${C.accentDim} 0%,transparent 60%),radial-gradient(ellipse 50% 35% at 5% 80%,${C.purpleDim} 0%,transparent 55%),${C.bg}` }} />
+        background: C.bg }} />
 
       {/* HEADER */}
       <header style={{ position: 'sticky', top: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 54, background: 'rgba(6,8,16,.9)', backdropFilter: 'blur(16px)', borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${C.accent},#38BDF8)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 13, color: '#000', boxShadow: `0 0 16px ${C.accent}40` }}>G</div>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 13, color: '#000', boxShadow: `0 0 16px ${C.accent}40` }}>G</div>
           <div>
-            <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 15 }}>
+            <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 15 }}>
               <span style={{ color: C.accent }}>#</span>Match<span style={{ color: C.muted, fontWeight: 300 }}>Via</span>Geperex
             </div>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.dim, letterSpacing: '.1em' }}>GEPEREX LIMITADA · RUT 78.110.793-K</div>
+            <div style={{ fontFamily: "'DM Mono'", fontSize: 9, color: C.dim, letterSpacing: '.1em' }}>GEPEREX LIMITADA · RUT 78.110.793-K</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 12, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '5px 13px', fontWeight: 700 }}>
+          <div style={{ fontFamily: "'DM Mono'", fontSize: 12, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '5px 13px', fontWeight: 700 }}>
             ⬡ {credits} créditos
           </div>
-          <button onClick={() => setModal(true)} style={{ padding: '5px 13px', borderRadius: 100, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: "'Space Grotesk'", fontWeight: 600 }}>+ Comprar</button>
+          <button onClick={() => setModal(true)} style={{ padding: '5px 13px', borderRadius: 100, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans'", fontWeight: 600 }}>+ Comprar</button>
         </div>
       </header>
 
@@ -1428,11 +1428,11 @@ ${content.slice(0, 6000)}`
       <main style={{ position: 'relative', zIndex: 5, maxWidth: 1100, margin: '0 auto', padding: '36px 18px 80px' }}>
         {/* Hero */}
         <div className="fade-up" style={{ marginBottom: 34, textAlign: 'center' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.accentDim, border: `1px solid ${C.accent}30`, borderRadius: 100, padding: '4px 14px', fontSize: 10, color: C.accent, fontFamily: "'JetBrains Mono'", letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 14 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(79,125,243,0.08)', border: `1px solid rgba(79,125,243,0.2)`, borderRadius: 100, padding: '4px 14px', fontSize: 10, color: C.accent, fontFamily: "'DM Mono'", letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 14 }}>
             ◈ Motor de Selección IA + OCR · v2.0
           </div>
-          <h1 style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 'clamp(1.9rem,5vw,3rem)', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 12 }}>
-            <span style={{ color: C.accent }}>#</span>Match<em style={{ fontStyle: 'italic', color: C.muted, fontWeight: 300 }}>Via</em><span style={{ color: '#38BDF8' }}>Geperex</span>
+          <h1 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 'clamp(1.9rem,5vw,3rem)', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 12 }}>
+            <span style={{ color: C.accent }}>#</span>Match<em style={{ fontStyle: 'italic', color: C.muted, fontWeight: 300 }}>Via</em><span style={{ color: '#8AAAF7' }}>Geperex</span>
           </h1>
           <p style={{ color: C.muted, fontSize: 14, maxWidth: 480, margin: '0 auto', lineHeight: 1.7, fontWeight: 300 }}>
             Tres modos de análisis con <strong style={{ color: C.text, fontWeight: 500 }}>prompts especializados</strong> + <strong style={{ color: C.purple, fontWeight: 500 }}>Vista Comparativa Cross-Modal</strong> con radar charts y exportación CSV.
@@ -1469,7 +1469,7 @@ ${content.slice(0, 6000)}`
             <StepHeader n="3" label="Tipo de Análisis" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
               {MODES.map(m => (
-                <button key={m.id} onClick={() => setMode(m.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: mode === m.id ? `${m.color}12` : 'transparent', border: `1px solid ${mode === m.id ? m.color + '50' : C.border}`, borderRadius: 8, cursor: 'pointer', transition: 'all .2s', fontFamily: "'Space Grotesk'", fontSize: 12 }}>
+                <button key={m.id} onClick={() => setMode(m.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: mode === m.id ? `${m.color}12` : 'transparent', border: `1px solid ${mode === m.id ? m.color + '50' : C.border}`, borderRadius: 8, cursor: 'pointer', transition: 'all .2s', fontFamily: "'DM Sans'", fontSize: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                     <span>{m.icon}</span>
                     <div style={{ textAlign: 'left' }}>
@@ -1477,15 +1477,15 @@ ${content.slice(0, 6000)}`
                       <div style={{ fontSize: 10, color: C.dim, marginTop: 1 }}>{m.desc}</div>
                     </div>
                   </div>
-                  <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '2px 7px', fontWeight: 700, flexShrink: 0 }}>{m.cost}cr</span>
+                  <span style={{ fontFamily: "'DM Mono'", fontSize: 10, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '2px 7px', fontWeight: 700, flexShrink: 0 }}>{m.cost}cr</span>
                 </button>
               ))}
             </div>
             <div style={{ display: 'flex', gap: 7 }}>
-              <button onClick={analyze} disabled={!canAnalyze} style={{ flex: 1, padding: '9px', borderRadius: 8, border: 'none', background: canAnalyze ? `linear-gradient(135deg,${C.accent},#38BDF8)` : C.surface, color: canAnalyze ? '#000' : C.dim, fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 13, cursor: canAnalyze ? 'pointer' : 'not-allowed', opacity: canAnalyze ? 1 : .5, transition: 'all .2s', boxShadow: canAnalyze ? `0 4px 16px ${C.accent}30` : 'none' }}>
+              <button onClick={analyze} disabled={!canAnalyze} style={{ flex: 1, padding: '9px', borderRadius: 8, border: 'none', background: canAnalyze ? C.accent : C.surface, color: canAnalyze ? '#fff' : C.dim, fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13, cursor: canAnalyze ? 'pointer' : 'not-allowed', opacity: canAnalyze ? 1 : .5, transition: 'all .2s', boxShadow: canAnalyze ? `0 4px 16px ${C.accent}30` : 'none' }}>
                 {loading ? '⟳ Analizando…' : '◈ Analizar'}
               </button>
-              <button onClick={reset} style={{ padding: '9px 13px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'Space Grotesk'", fontSize: 13, fontWeight: 600 }}>↺</button>
+              <button onClick={reset} style={{ padding: '9px 13px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'DM Sans'", fontSize: 13, fontWeight: 600 }}>↺</button>
             </div>
             {canAnalyze && (
               <div style={{ marginTop: 8, fontSize: 11, color: C.dim, textAlign: 'center' }}>
@@ -1517,12 +1517,12 @@ ${content.slice(0, 6000)}`
           {(results || compareResults) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
               {results && (
-                <button onClick={() => setActiveView('results')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'results' ? C.accent : C.border}`, background: activeView === 'results' ? C.accentDim : 'transparent', color: activeView === 'results' ? C.accent : C.muted, fontFamily: "'Space Grotesk'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={() => setActiveView('results')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'results' ? C.accent : C.border}`, background: activeView === 'results' ? C.accentDim : 'transparent', color: activeView === 'results' ? C.accent : C.muted, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   📋 Resultados
                 </button>
               )}
               {compareResults && (
-                <button onClick={() => setActiveView('compare')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'compare' ? C.purple : C.border}`, background: activeView === 'compare' ? C.purpleDim : 'transparent', color: activeView === 'compare' ? C.purple : C.muted, fontFamily: "'Space Grotesk'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={() => setActiveView('compare')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'compare' ? C.purple : C.border}`, background: activeView === 'compare' ? C.purpleDim : 'transparent', color: activeView === 'compare' ? C.purple : C.muted, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   ⚡ Vista Comparativa
                 </button>
               )}
@@ -1532,7 +1532,7 @@ ${content.slice(0, 6000)}`
           {loading && (
             <div className="glow-card" style={{ padding: '48px 28px', textAlign: 'center' }}>
               <div className="spinner" style={{ margin: '0 auto 16px' }} />
-              <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{loadMsg || 'Procesando…'}</div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{loadMsg || 'Procesando…'}</div>
               {mode === 'compare' && <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados ejecutándose en paralelo</div>}
             </div>
           )}
@@ -1540,7 +1540,7 @@ ${content.slice(0, 6000)}`
           {!loading && activeView === 'results' && results && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ marginBottom: 6 }}>
-                <h2 style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 20 }}>
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20 }}>
                   {MODES.find(m => m.id === results.mode)?.label}
                 </h2>
                 <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{results.candidates.length} candidato(s) evaluado(s)</div>
@@ -1552,7 +1552,7 @@ ${content.slice(0, 6000)}`
           {!loading && activeView === 'compare' && compareResults && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Vista Comparativa Cross-Modal</h2>
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Vista Comparativa Cross-Modal</h2>
                 <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados · Comparación matricial · Radar charts · Exportación CSV</div>
               </div>
               <ComparativePanel compareResults={compareResults} onExportCSV={exportCSV} />
@@ -1562,7 +1562,7 @@ ${content.slice(0, 6000)}`
           {!loading && !results && !compareResults && (
             <div style={{ textAlign: 'center', padding: '52px 24px', background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 14 }}>
               <div style={{ fontSize: 40, opacity: .2, marginBottom: 14 }}>◈</div>
-              <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 17, color: C.muted, marginBottom: 8 }}>Sin resultados aún</div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, color: C.muted, marginBottom: 8 }}>Sin resultados aún</div>
               <div style={{ color: C.dim, fontSize: 13, maxWidth: 380, margin: '0 auto', lineHeight: 1.7 }}>
                 Sube archivos, elige análisis y presiona <strong style={{ color: C.text }}>Analizar</strong>.<br />
                 Para la <strong style={{ color: C.purple }}>Vista Comparativa ⚡</strong>, selecciona ese modo.<br /><br />
@@ -1582,19 +1582,19 @@ ${content.slice(0, 6000)}`
       {modal && (
         <div onClick={e => { if (e.target === e.currentTarget) setModal(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,16,.87)', backdropFilter: 'blur(10px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
           <div className="glow-card" style={{ padding: 28, maxWidth: 370, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
-            <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>⬡ Comprar Créditos</div>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>⬡ Comprar Créditos</div>
             <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.6, marginBottom: 20, fontWeight: 300 }}>Elige el paquete para tus procesos de selección.</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 18 }}>
               {[[50,'$4.990'],[150,'$12.990'],[500,'$34.990']].map(([amt, price]) => (
                 <div key={amt} onClick={() => { setCredits(c => c + amt); setModal(false); notify('⬡', `+${amt} créditos añadidos`) }}
                   style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 10px', textAlign: 'center', cursor: 'pointer', transition: 'border-color .2s' }}>
-                  <div style={{ fontFamily: "'JetBrains Mono'", fontWeight: 700, fontSize: 22, color: C.gold }}>{amt}</div>
+                  <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 22, color: C.gold }}>{amt}</div>
                   <div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>créditos</div>
                   <div style={{ fontSize: 13, color: C.muted, marginTop: 6, fontWeight: 500 }}>{price}</div>
                 </div>
               ))}
             </div>
-            <button onClick={() => setModal(false)} style={{ width: '100%', padding: '9px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'Space Grotesk'", fontWeight: 600 }}>Cerrar</button>
+            <button onClick={() => setModal(false)} style={{ width: '100%', padding: '9px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'DM Sans'", fontWeight: 600 }}>Cerrar</button>
           </div>
         </div>
       )}
@@ -1613,8 +1613,8 @@ ${content.slice(0, 6000)}`
 function StepHeader({ n, label }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-      <div style={{ width: 22, height: 22, borderRadius: 6, background: `linear-gradient(135deg,${C.accent},#38BDF8)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#000', fontFamily: "'JetBrains Mono'", flexShrink: 0 }}>{n}</div>
-      <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 13 }}>{label}</div>
+      <div style={{ width: 22, height: 22, borderRadius: 6, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: "'DM Mono'", flexShrink: 0 }}>{n}</div>
+      <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13 }}>{label}</div>
     </div>
   )
 }
