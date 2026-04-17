@@ -1,41 +1,41 @@
 import { useState, useRef } from 'react'
 import { extractText } from './extractor.js'
 
-// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+// ─── DESIGN TOKENS — LIGHT THEME ─────────────────────────────────────────────
 const C = {
-  bg:        '#08080A',
-  bgAlt:     '#0D0D10',
-  surface:   '#101014',
-  card:      '#141418',
-  cardHi:    '#1A1A1F',
-  border:    '#1F1F26',
-  borderHi:  '#2E2E38',
-  accent:    '#3D6FE8',
-  accentLt:  '#5B87F5',
-  accentDim: 'rgba(61,111,232,0.10)',
-  accentGlow:'rgba(61,111,232,0.18)',
-  gold:      '#B8922A',
-  goldLt:    '#D4A83C',
-  goldDim:   'rgba(184,146,42,0.10)',
-  green:     '#27AE60',
-  greenLt:   '#2ECC71',
-  greenDim:  'rgba(39,174,96,0.10)',
-  red:       '#C0392B',
-  redLt:     '#E5534B',
-  redDim:    'rgba(192,57,43,0.10)',
-  amber:     '#C87D1A',
-  amberLt:   '#E08C20',
-  amberDim:  'rgba(200,125,26,0.10)',
+  bg:        '#F5F6F8',
+  bgAlt:     '#ECEEF2',
+  surface:   '#FFFFFF',
+  card:      '#FFFFFF',
+  cardHi:    '#F9FAFB',
+  border:    '#E2E5EA',
+  borderHi:  '#C8CDD6',
+  accent:    '#2558D9',
+  accentLt:  '#3D6FE8',
+  accentDim: 'rgba(37,88,217,0.08)',
+  accentGlow:'rgba(37,88,217,0.12)',
+  gold:      '#966E10',
+  goldLt:    '#B8922A',
+  goldDim:   'rgba(150,110,16,0.08)',
+  green:     '#1A7A45',
+  greenLt:   '#22A05A',
+  greenDim:  'rgba(26,122,69,0.08)',
+  red:       '#B91C1C',
+  redLt:     '#DC2626',
+  redDim:    'rgba(185,28,28,0.08)',
+  amber:     '#9A5A00',
+  amberLt:   '#C47300',
+  amberDim:  'rgba(154,90,0,0.08)',
   purple:    '#5B4ED6',
   purpleLt:  '#7B68EE',
-  purpleDim: 'rgba(91,78,214,0.10)',
-  teal:      '#1A8C7A',
-  tealLt:    '#22B89E',
-  tealDim:   'rgba(26,140,122,0.10)',
-  text:      '#E8E8EA',
-  muted:     '#7A7A85',
-  dim:       '#38383F',
-  dimHi:     '#4A4A54',
+  purpleDim: 'rgba(91,78,214,0.08)',
+  teal:      '#0E7A6A',
+  tealLt:    '#0FA37D',
+  tealDim:   'rgba(14,122,106,0.08)',
+  text:      '#111318',
+  muted:     '#5A6070',
+  dim:       '#9AA0AE',
+  dimHi:     '#7A8090',
 }
 
 // ─── PROMPT: EXTRACCIÓN ESTRUCTURADA DEL PERFIL (Fase 1) ─────────────────────
@@ -345,7 +345,7 @@ const MODES = [
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const scoreColor = v => v >= 75 ? C.greenLt : v >= 50 ? C.amberLt : C.redLt
 const RECO_CFG = {
-  'CONTRATAR':     { color: C.greenLt,  bg: C.greenDim,  border: `${C.green}35`, icon: '✓', label: 'CONTRATAR' },
+  'CONTRATAR':     { color: C.greenLt,  bg: C.greenDim,  border: `${C.green}40`, icon: '✓', label: 'CONTRATAR' },
   'RESERVA':       { color: C.amberLt,  bg: C.amberDim,  border: `${C.amber}35`, icon: '◐', label: 'RESERVA' },
   'NO RECOMENDAR': { color: C.redLt,    bg: C.redDim,    border: `${C.red}35`,   icon: '✕', label: 'NO RECOMENDAR' },
 }
@@ -355,12 +355,12 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;600&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 
 /* Scrollbar */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:${C.border};border-radius:2px}
+::-webkit-scrollbar-thumb{background:${C.borderHi};border-radius:2px}
 ::-webkit-scrollbar-thumb:hover{background:${C.borderHi}}
 
 /* BG grid técnico */
@@ -371,12 +371,12 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
     linear-gradient(90deg,${C.border}55 1px,transparent 1px);
   background-size:48px 48px;
   mask-image:radial-gradient(ellipse 80% 70% at 50% 0%,#000 30%,transparent 100%);
-  opacity:.35;
+  opacity:.18;
 }
 .bg-glow{
   position:fixed;top:-120px;left:50%;transform:translateX(-50%);
   width:700px;height:300px;border-radius:50%;
-  background:radial-gradient(ellipse,${C.accentGlow} 0%,transparent 70%);
+  background:radial-gradient(ellipse,${C.accentGlow} 0%,transparent 65%);
   z-index:0;pointer-events:none;filter:blur(40px);
 }
 
@@ -400,6 +400,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   padding:22px 18px 40px;
   display:flex;flex-direction:column;gap:16px;
   background:${C.surface};
+  box-shadow:2px 0 12px rgba(0,0,0,.04);
 }
 .sidebar::-webkit-scrollbar{width:0}
 
@@ -429,8 +430,9 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   border:1px solid ${C.border};
   border-radius:10px;
   transition:border-color .2s,box-shadow .2s;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
-.panel:hover{border-color:${C.borderHi}}
+.panel:hover{border-color:${C.borderHi};box-shadow:0 2px 12px rgba(0,0,0,.07)}
 .panel-accent{border-left:3px solid ${C.accent}}
 .panel-gold{border-left:3px solid ${C.gold}}
 .panel-green{border-left:3px solid ${C.green}}
@@ -443,6 +445,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   border:1px solid ${C.border};
   border-radius:10px;
   overflow:hidden;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
 .sidebar-section-hd{
   padding:11px 14px;
@@ -479,7 +482,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   text-align:left;
 }
 .mode-btn:last-child{margin-bottom:0}
-.mode-btn:hover{background:rgba(255,255,255,.03);border-color:${C.borderHi}}
+.mode-btn:hover{background:rgba(0,0,0,.03);border-color:${C.borderHi}}
 
 /* CTA */
 .cta-btn{
@@ -547,10 +550,10 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 }
 .cmp-table td{padding:10px 12px;border-bottom:1px solid ${C.border};vertical-align:middle;line-height:1.5}
 .cmp-table tr:last-child td{border-bottom:none}
-.cmp-table tr:hover td{background:rgba(255,255,255,.016)}
+.cmp-table tr:hover td{background:rgba(0,0,0,.022)}
 
 /* Spinner */
-.spinner{width:26px;height:26px;border:2px solid ${C.border};border-top-color:${C.accent};border-radius:50%;animation:spin .65s linear infinite}
+.spinner{width:26px;height:26px;border:2px solid ${C.borderHi};border-top-color:${C.accent};border-radius:50%;animation:spin .65s linear infinite}
 
 /* Dropzone */
 .drop-zone{
@@ -558,7 +561,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   padding:16px 12px;text-align:center;cursor:pointer;
   transition:all .2s;background:transparent;
 }
-.drop-zone:hover,.drop-zone.drag{border-color:${C.accent};background:${C.accentDim}}
+.drop-zone:hover,.drop-zone.drag{border-color:${C.accent};background:${C.accentDim};box-shadow:0 0 0 3px ${C.accentDim}}
 
 /* File item */
 .file-item{
@@ -1752,7 +1755,7 @@ ${content.slice(0, 4000)}`
         position: 'sticky', top: 0, zIndex: 100,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 24px', height: 57,
-        background: `rgba(8,8,10,0.92)`, backdropFilter: 'blur(20px)',
+        background: `rgba(245,246,248,0.96)`, backdropFilter: 'blur(20px)',
         borderBottom: `1px solid ${C.border}`,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
