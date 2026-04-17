@@ -1329,64 +1329,77 @@ function CandidateCard({ candidate: c, idx }) {
       </div>
 
       {open && (
-        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            {(c.executiveSummary || c.summary) && (
-              <div style={{ fontSize: 13, lineHeight: 1.7, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-                {c.executiveSummary || c.summary}
-              </div>
-            )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+          {/* Resumen ejecutivo */}
+          {(c.executiveSummary || c.summary) && (
+            <div style={{ fontSize: 13, lineHeight: 1.7, color: C.muted, background: C.bgAlt, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
+              {c.executiveSummary || c.summary}
+            </div>
+          )}
+
+          {/* Fortalezas + Brechas + Riesgos en fila */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px,1fr))', gap: 10, marginBottom: 14 }}>
             {c.strengths?.length > 0 && (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 5 }}>Fortalezas</div>
+              <div>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 6 }}>Fortalezas</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {c.strengths.map((s, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.greenDim, border: `1px solid ${C.green}28`, color: C.green, fontWeight: 500 }}>{s}</span>)}
+                  {c.strengths.map((s, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.greenDim, border: `1px solid ${C.green}28`, color: C.greenLt, fontWeight: 500 }}>{s}</span>)}
                 </div>
               </div>
             )}
             {c.gaps?.length > 0 && (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 5 }}>Brechas</div>
+              <div>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 6 }}>Brechas</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {c.gaps.map((g, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.redDim, border: `1px solid ${C.red}28`, color: C.red, fontWeight: 500 }}>{g}</span>)}
+                  {c.gaps.map((g, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.redDim, border: `1px solid ${C.red}28`, color: C.redLt, fontWeight: 500 }}>{g}</span>)}
                 </div>
               </div>
             )}
             {c.riskFactors?.length > 0 && (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 5 }}>Factores de Riesgo</div>
+              <div>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 6 }}>Factores de Riesgo</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {c.riskFactors.map((r, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.amberDim, border: `1px solid ${C.amber}28`, color: C.amber, fontWeight: 500 }}>⚠ {r}</span>)}
+                  {c.riskFactors.map((r, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.amberDim, border: `1px solid ${C.amber}28`, color: C.amberLt, fontWeight: 500 }}>⚠ {r}</span>)}
                 </div>
               </div>
             )}
-            {c.scoreBreakdown && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 8 }}>Desglose Curricular</div>
-                {Object.entries(c.scoreBreakdown).map(([k, v]) => <BarRow key={k} label={k} value={v} />)}
-              </div>
-            )}
-            {/* Tabla de contraste perfil vs candidato — solo modo profile */}
-            {c.matchDetail && <MatchDetailTable matchDetail={c.matchDetail} />}
-            {c.competencyContrast?.length > 0 && <CompetencyContrastTable competencyContrast={c.competencyContrast} />}
-          {/* Radar competencial — bloque propio debajo de todo el contenido */}
+          </div>
+
+          {/* Desglose curricular */}
+          {c.scoreBreakdown && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 8 }}>Desglose Curricular</div>
+              {Object.entries(c.scoreBreakdown).map(([k, v]) => <BarRow key={k} label={k} value={v} />)}
+            </div>
+          )}
+
+          {/* ── RADAR COMPETENCIAL — centrado, ancho completo ── */}
           {c.competencies && Object.keys(c.competencies).length > 0 && (
             <div style={{
-              marginTop: 20,
-              padding: '16px 20px',
               background: C.bgAlt,
-              borderRadius: 10,
               border: `1px solid ${C.border}`,
+              borderRadius: 10,
+              padding: '18px 24px 14px',
+              marginBottom: 16,
             }}>
               <div style={{
                 fontSize: 9, color: C.dim, textTransform: 'uppercase',
-                letterSpacing: '.12em', fontWeight: 700, marginBottom: 12, textAlign: 'center',
+                letterSpacing: '.12em', fontWeight: 700,
+                marginBottom: 4, textAlign: 'center',
               }}>
                 Radar Competencial
               </div>
               <RadarChart competencies={c.competencies} color={C.navy} />
             </div>
           )}
+
+          {/* Tabla de contraste perfil vs candidato */}
+          {c.matchDetail && <MatchDetailTable matchDetail={c.matchDetail} />}
+
+          {/* Contraste competencias vs. diccionario */}
+          {c.competencyContrast?.length > 0 && <CompetencyContrastTable competencyContrast={c.competencyContrast} />}
+
         </div>
       )}
     </div>
