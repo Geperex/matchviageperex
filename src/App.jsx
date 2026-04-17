@@ -3,26 +3,39 @@ import { extractText } from './extractor.js'
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
-  bg:       '#0A0A0B',
-  surface:  '#111113',
-  card:     '#161618',
-  border:   '#242428',
-  borderHi: '#38383E',
-  accent:   '#4F7DF3',
-  accentDim:'rgba(79,125,243,0.10)',
-  gold:     '#C9A84C',
-  goldDim:  'rgba(201,168,76,0.10)',
-  green:    '#2ECC71',
-  greenDim: 'rgba(46,204,113,0.10)',
-  red:      '#E5534B',
-  redDim:   'rgba(229,83,75,0.10)',
-  amber:    '#D4973A',
-  amberDim: 'rgba(212,151,58,0.10)',
-  purple:   '#7B68EE',
-  purpleDim:'rgba(123,104,238,0.10)',
-  text:     '#ECECED',
-  muted:    '#8B8B95',
-  dim:      '#3E3E47',
+  bg:        '#08080A',
+  bgAlt:     '#0D0D10',
+  surface:   '#101014',
+  card:      '#141418',
+  cardHi:    '#1A1A1F',
+  border:    '#1F1F26',
+  borderHi:  '#2E2E38',
+  accent:    '#3D6FE8',
+  accentLt:  '#5B87F5',
+  accentDim: 'rgba(61,111,232,0.10)',
+  accentGlow:'rgba(61,111,232,0.18)',
+  gold:      '#B8922A',
+  goldLt:    '#D4A83C',
+  goldDim:   'rgba(184,146,42,0.10)',
+  green:     '#27AE60',
+  greenLt:   '#2ECC71',
+  greenDim:  'rgba(39,174,96,0.10)',
+  red:       '#C0392B',
+  redLt:     '#E5534B',
+  redDim:    'rgba(192,57,43,0.10)',
+  amber:     '#C87D1A',
+  amberLt:   '#E08C20',
+  amberDim:  'rgba(200,125,26,0.10)',
+  purple:    '#5B4ED6',
+  purpleLt:  '#7B68EE',
+  purpleDim: 'rgba(91,78,214,0.10)',
+  teal:      '#1A8C7A',
+  tealLt:    '#22B89E',
+  tealDim:   'rgba(26,140,122,0.10)',
+  text:      '#E8E8EA',
+  muted:     '#7A7A85',
+  dim:       '#38383F',
+  dimHi:     '#4A4A54',
 }
 
 // ─── PROMPT: EXTRACCIÓN ESTRUCTURADA DEL PERFIL (Fase 1) ─────────────────────
@@ -330,42 +343,340 @@ const MODES = [
 ]
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-const scoreColor = v => v >= 75 ? C.green : v >= 50 ? C.amber : C.red
+const scoreColor = v => v >= 75 ? C.greenLt : v >= 50 ? C.amberLt : C.redLt
 const RECO_CFG = {
-  'CONTRATAR':     { color: C.green,  bg: C.greenDim,  border: '#10B98130', icon: '✅' },
-  'RESERVA':       { color: C.amber,  bg: C.amberDim,  border: '#F59E0B30', icon: '🟡' },
-  'NO RECOMENDAR': { color: C.red,    bg: C.redDim,    border: '#F43F5E30', icon: '❌' },
+  'CONTRATAR':     { color: C.greenLt,  bg: C.greenDim,  border: `${C.green}35`, icon: '✓', label: 'CONTRATAR' },
+  'RESERVA':       { color: C.amberLt,  bg: C.amberDim,  border: `${C.amber}35`, icon: '◐', label: 'RESERVA' },
+  'NO RECOMENDAR': { color: C.redLt,    bg: C.redDim,    border: `${C.red}35`,   icon: '✕', label: 'NO RECOMENDAR' },
 }
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;600&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:${C.surface}}
-::-webkit-scrollbar-thumb{background:${C.border};border-radius:3px}
+body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:${C.border};border-radius:2px}
 ::-webkit-scrollbar-thumb:hover{background:${C.borderHi}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* BG grid técnico */
+.bg-grid{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(${C.border}55 1px,transparent 1px),
+    linear-gradient(90deg,${C.border}55 1px,transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse 80% 70% at 50% 0%,#000 30%,transparent 100%);
+  opacity:.35;
+}
+.bg-glow{
+  position:fixed;top:-120px;left:50%;transform:translateX(-50%);
+  width:700px;height:300px;border-radius:50%;
+  background:radial-gradient(ellipse,${C.accentGlow} 0%,transparent 70%);
+  z-index:0;pointer-events:none;filter:blur(40px);
+}
+
+/* Layout */
+.app-shell{
+  display:grid;
+  grid-template-columns:320px 1fr;
+  gap:0;
+  min-height:100vh;
+  position:relative;z-index:5;
+}
+@media(max-width:860px){
+  .app-shell{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+}
+
+/* Sidebar */
+.sidebar{
+  position:sticky;top:57px;height:calc(100vh - 57px);
+  overflow-y:auto;overflow-x:hidden;
+  border-right:1px solid ${C.border};
+  padding:22px 18px 40px;
+  display:flex;flex-direction:column;gap:16px;
+  background:${C.surface};
+}
+.sidebar::-webkit-scrollbar{width:0}
+
+/* Content */
+.content{
+  padding:28px 24px 80px;
+  overflow-x:hidden;
+}
+
+/* Keyframes */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
-@keyframes radarIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
-.fade-up{animation:fadeUp .45s ease both}
-.slide-in{animation:slideIn .35s ease both}
-.glow-card{position:relative;background:${C.card};border:1px solid ${C.border};border-radius:12px;transition:border-color .25s,box-shadow .25s}
-.glow-card:hover{border-color:${C.borderHi};box-shadow:0 4px 24px rgba(0,0,0,.5)}
-.reco-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:'DM Mono',monospace}
-.score-ring{display:flex;align-items:center;justify-content:center;flex-direction:column;width:68px;height:68px;border-radius:50%;border:3px solid;font-family:'DM Mono',monospace;font-size:19px;font-weight:700;flex-shrink:0}
-.bar-row{display:grid;grid-template-columns:130px 1fr 36px;align-items:center;gap:9px;margin-bottom:6px}
-.bar-track{height:5px;background:${C.border};border-radius:100px;overflow:hidden}
-.bar-fill{height:100%;border-radius:100px;transition:width 1.1s ease}
-.cmp-table{width:100%;border-collapse:collapse;font-size:13px}
-.cmp-table th{background:${C.surface};padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${C.muted};border-bottom:1px solid ${C.border}}
-.cmp-table td{padding:11px 14px;border-bottom:1px solid ${C.border};vertical-align:middle}
+@keyframes slideIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes radarIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+@keyframes progressBar{from{width:0%}to{width:100%}}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes countUp{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+
+.fade-up{animation:fadeUp .4s cubic-bezier(.22,1,.36,1) both}
+.fade-in{animation:fadeIn .3s ease both}
+.slide-in{animation:slideIn .3s cubic-bezier(.22,1,.36,1) both}
+
+/* Cards */
+.panel{
+  background:${C.card};
+  border:1px solid ${C.border};
+  border-radius:10px;
+  transition:border-color .2s,box-shadow .2s;
+}
+.panel:hover{border-color:${C.borderHi}}
+.panel-accent{border-left:3px solid ${C.accent}}
+.panel-gold{border-left:3px solid ${C.gold}}
+.panel-green{border-left:3px solid ${C.green}}
+.panel-purple{border-left:3px solid ${C.purple}}
+.panel-teal{border-left:3px solid ${C.teal}}
+
+/* Sidebar section */
+.sidebar-section{
+  background:${C.card};
+  border:1px solid ${C.border};
+  border-radius:10px;
+  overflow:hidden;
+}
+.sidebar-section-hd{
+  padding:11px 14px;
+  border-bottom:1px solid ${C.border};
+  display:flex;align-items:center;gap:8px;
+  background:${C.surface};
+}
+.sidebar-section-bd{padding:14px}
+
+/* Step badge */
+.step-badge{
+  width:20px;height:20px;
+  border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;
+  font-family:'DM Mono',monospace;
+  flex-shrink:0;
+  color:#fff;
+}
+
+/* Mode button */
+.mode-btn{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 11px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:all .18s;
+  border:1px solid ${C.border};
+  background:transparent;
+  width:100%;
+  font-family:'DM Sans',sans-serif;
+  font-size:12px;
+  margin-bottom:5px;
+  text-align:left;
+}
+.mode-btn:last-child{margin-bottom:0}
+.mode-btn:hover{background:rgba(255,255,255,.03);border-color:${C.borderHi}}
+
+/* CTA */
+.cta-btn{
+  width:100%;padding:12px;
+  border-radius:9px;border:none;
+  font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;
+  cursor:pointer;transition:all .2s;
+  position:relative;overflow:hidden;
+  letter-spacing:.02em;
+}
+.cta-btn.active{
+  background:${C.accent};color:#fff;
+  box-shadow:0 4px 20px ${C.accentGlow};
+}
+.cta-btn.active:hover{background:${C.accentLt};box-shadow:0 6px 28px ${C.accentGlow}}
+.cta-btn.inactive{background:${C.surface};color:${C.dim};cursor:not-allowed;opacity:.6}
+.cta-btn.loading{background:${C.surface};color:${C.muted};cursor:wait}
+
+/* Progress steps */
+.progress-steps{display:flex;flex-direction:column;gap:3px;margin-top:8px}
+.progress-step{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 8px;border-radius:6px;
+  font-size:11px;font-family:'DM Mono',monospace;
+  transition:all .3s;
+}
+.progress-step.done{color:${C.greenLt};background:${C.greenDim}}
+.progress-step.active{color:${C.text};background:rgba(255,255,255,.04);animation:pulse 1.2s ease infinite}
+.progress-step.pending{color:${C.dim}}
+
+/* Score ring */
+.score-ring{
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  width:72px;height:72px;border-radius:50%;border:2px solid;
+  font-family:'DM Mono',monospace;font-size:20px;font-weight:700;
+  flex-shrink:0;position:relative;
+  animation:countUp .5s cubic-bezier(.22,1,.36,1) both;
+}
+.score-ring::after{
+  content:'';position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid currentColor;opacity:.15;
+}
+
+/* Reco badge */
+.reco-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 12px;border-radius:100px;
+  font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;font-family:'DM Mono',monospace;
+  border:1px solid;
+}
+
+/* Bars */
+.bar-row{display:grid;grid-template-columns:128px 1fr 34px;align-items:center;gap:9px;margin-bottom:7px}
+.bar-track{height:4px;background:${C.border};border-radius:100px;overflow:hidden}
+.bar-fill{height:100%;border-radius:100px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+
+/* Tables */
+.cmp-table{width:100%;border-collapse:collapse;font-size:12px}
+.cmp-table th{
+  background:${C.surface};padding:9px 12px;text-align:left;
+  font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:${C.muted};border-bottom:1px solid ${C.border};
+  font-family:'DM Mono',monospace;
+}
+.cmp-table td{padding:10px 12px;border-bottom:1px solid ${C.border};vertical-align:middle;line-height:1.5}
 .cmp-table tr:last-child td{border-bottom:none}
-.cmp-table tr:hover td{background:rgba(255,255,255,.018)}
-.spinner{width:30px;height:30px;border:2px solid ${C.border};border-top-color:${C.accent};border-radius:50%;animation:spin .7s linear infinite}
+.cmp-table tr:hover td{background:rgba(255,255,255,.016)}
+
+/* Spinner */
+.spinner{width:26px;height:26px;border:2px solid ${C.border};border-top-color:${C.accent};border-radius:50%;animation:spin .65s linear infinite}
+
+/* Dropzone */
+.drop-zone{
+  border:1px dashed ${C.border};border-radius:8px;
+  padding:16px 12px;text-align:center;cursor:pointer;
+  transition:all .2s;background:transparent;
+}
+.drop-zone:hover,.drop-zone.drag{border-color:${C.accent};background:${C.accentDim}}
+
+/* File item */
+.file-item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;border-radius:7px;
+  background:${C.surface};border:1px solid ${C.border};
+  font-size:11px;font-family:'DM Mono',monospace;
+  animation:fadeIn .25s ease both;
+}
+
+/* Tag pill */
+.tag{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:100px;font-size:10px;font-weight:600;
+  font-family:'DM Mono',monospace;letter-spacing:.04em;border:1px solid;
+}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:22px;right:22px;
+  background:${C.cardHi};border-radius:10px;
+  padding:11px 16px;display:flex;align-items:center;gap:9px;
+  font-size:12px;color:${C.text};z-index:300;
+  box-shadow:0 8px 40px rgba(0,0,0,.7);max-width:300px;
+  animation:slideIn .3s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* Modal */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(6,8,16,.88);
+  backdrop-filter:blur(12px);z-index:200;
+  display:flex;align-items:center;justify-content:center;padding:18px;
+}
+.modal-box{
+  background:${C.card};border:1px solid ${C.border};
+  border-radius:14px;padding:28px;max-width:360px;width:100%;
+  box-shadow:0 24px 80px rgba(0,0,0,.7);
+  animation:fadeUp .3s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* Credit card */
+.credit-card{
+  background:${C.surface};border:1px solid ${C.border};
+  border-radius:10px;padding:16px 12px;text-align:center;cursor:pointer;
+  transition:all .2s;
+}
+.credit-card:hover{border-color:${C.gold};background:${C.goldDim}}
+
+/* Results header */
+.results-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;flex-wrap:wrap;gap:10px;
+}
+
+/* Candidate card */
+.candidate-card{
+  background:${C.card};border:1px solid ${C.border};
+  border-radius:12px;overflow:hidden;
+  animation:fadeUp .4s cubic-bezier(.22,1,.36,1) both;
+  margin-bottom:12px;
+  transition:border-color .2s;
+}
+.candidate-card:hover{border-color:${C.borderHi}}
+.candidate-card-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;cursor:pointer;gap:12px;
+}
+.candidate-card-bd{padding:0 20px 20px;border-top:1px solid ${C.border}}
+
+/* Section pill header */
+.section-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:100px;
+  font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  font-family:'DM Mono',monospace;border:1px solid;
+  margin-bottom:12px;margin-top:18px;
+}
+
+/* Info grid */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px}
+.info-cell{background:${C.surface};border:1px solid ${C.border};border-radius:7px;padding:10px 12px}
+
+/* Cumple badge */
+.cumple-si{color:${C.greenLt};font-weight:700;font-size:10px;font-family:'DM Mono',monospace}
+.cumple-parcial{color:${C.amberLt};font-weight:700;font-size:10px;font-family:'DM Mono',monospace}
+.cumple-no{color:${C.redLt};font-weight:700;font-size:10px;font-family:'DM Mono',monospace}
+
+/* Brecha badge */
+.brecha-sin{color:${C.greenLt};font-size:10px;font-family:'DM Mono',monospace;font-weight:600}
+.brecha-parcial{color:${C.amberLt};font-size:10px;font-family:'DM Mono',monospace;font-weight:600}
+.brecha-sig{color:${C.redLt};font-size:10px;font-family:'DM Mono',monospace;font-weight:600}
+.brecha-crit{color:${C.redLt};font-size:10px;font-family:'DM Mono',monospace;font-weight:700;text-transform:uppercase}
+
+/* Dict card */
+.comp-type-badge{
+  display:inline-flex;align-items:center;padding:1px 7px;
+  border-radius:4px;font-size:9px;font-weight:700;
+  font-family:'DM Mono',monospace;letter-spacing:.07em;
+  text-transform:uppercase;
+}
+
+/* Profile card fields */
+.pf-row{
+  display:grid;grid-template-columns:110px 1fr;gap:8px;
+  padding:7px 0;border-bottom:1px solid ${C.border};align-items:start;
+  font-size:12px;
+}
+.pf-row:last-child{border-bottom:none}
+.pf-label{color:${C.muted};font-family:'DM Mono',monospace;font-size:10px;
+  font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding-top:1px}
+
+/* Nav tabs */
+.view-tabs{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap}
+.view-tab{
+  padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .18s;border:1px solid;
+  font-family:'DM Sans',sans-serif;background:transparent;
+}
 `
 
 // ─── RADAR CHART ──────────────────────────────────────────────────────────────
@@ -432,9 +743,9 @@ function RadarChart({ competencies, color = C.accent, size = 210 }) {
 function ScoreRing({ score }) {
   const col = scoreColor(score)
   return (
-    <div className="score-ring" style={{ borderColor: col, color: col, boxShadow: `0 0 18px ${col}22` }}>
+    <div className="score-ring" style={{ borderColor: col, color: col, boxShadow: `0 0 20px ${col}18` }}>
       <span>{score}</span>
-      <span style={{ fontSize: 9, letterSpacing: '.06em', opacity: .65 }}>/100</span>
+      <span style={{ fontSize: 8, letterSpacing: '.08em', opacity: .55, fontWeight: 500 }}>/100</span>
     </div>
   )
 }
@@ -442,8 +753,8 @@ function ScoreRing({ score }) {
 function RecoBadge({ reco }) {
   const cfg = RECO_CFG[reco] || RECO_CFG['RESERVA']
   return (
-    <span className="reco-badge" style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
-      {cfg.icon} {reco}
+    <span className="reco-badge" style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.border }}>
+      {cfg.icon} {cfg.label}
     </span>
   )
 }
@@ -464,29 +775,31 @@ function BarRow({ label, value }) {
 function DropZone({ icon, label, hint, multiple, onFiles, inputRef }) {
   const [over, setOver] = useState(false)
   return (
-    <div onDragOver={e => { e.preventDefault(); setOver(true) }}
+    <div
+      className={`drop-zone${over ? ' drag' : ''}`}
+      onDragOver={e => { e.preventDefault(); setOver(true) }}
       onDragLeave={() => setOver(false)}
       onDrop={e => { e.preventDefault(); setOver(false); onFiles(e.dataTransfer.files) }}
-      style={{ border: `1.5px dashed ${over ? C.accent : C.border}`, borderRadius: 9, padding: '16px 12px', textAlign: 'center', cursor: 'pointer', background: over ? C.accentDim : 'transparent', transition: 'all .2s', position: 'relative' }}>
+      style={{ position: 'relative' }}
+    >
       <input ref={inputRef} type="file" accept=".txt,.pdf,.docx" multiple={multiple}
         onChange={e => onFiles(e.target.files)}
         style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
-      <div style={{ fontSize: 22, marginBottom: 5 }}>{icon}</div>
-      <div style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>
-        <strong style={{ color: C.accent }}>{label}</strong>
-      </div>
-      <div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>{hint}</div>
+      <div style={{ fontSize: 20, marginBottom: 5, opacity: .6 }}>{icon}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: C.accent }}>{label}</div>
+      <div style={{ fontSize: 10, color: C.dim, marginTop: 3, fontFamily: "'DM Mono'" }}>{hint}</div>
     </div>
   )
 }
 
 function FileItem({ name, status, onRemove }) {
-  const cols = { ready: C.green, ocr: C.amber, error: C.red, loading: C.muted }
-  const icons = { ready: '✓', ocr: '⟳', error: '✗', loading: '…' }
+  const cols = { ready: C.greenLt, ocr: C.amberLt, error: C.redLt, loading: C.muted }
+  const icons = { ready: '✓', ocr: '◌', error: '✗', loading: '…' }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 10px', fontSize: 12 }}>
-      <span style={{ color: cols[status] || C.muted, fontSize: 13 }}>{icons[status] || '…'}</span>
-      <span style={{ flex: 1, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+    <div className="file-item">
+      <span style={{ color: cols[status] || C.muted, fontSize: 11, flexShrink: 0 }}>{icons[status] || '…'}</span>
+      <span style={{ flex: 1, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 11 }}>{name}</span>
+      {status === 'loading' && <div className="spinner" style={{ width: 12, height: 12, borderWidth: 1.5, flexShrink: 0 }} />}
       {onRemove && <span onClick={onRemove} style={{ cursor: 'pointer', color: C.dim, fontSize: 16, lineHeight: 1 }}>×</span>}
     </div>
   )
@@ -515,7 +828,7 @@ function ProfileCard({ profile, loading }) {
   const [collapsed, setCollapsed] = useState(false)
 
   if (loading) return (
-    <div className="glow-card fade-up" style={{ padding: '18px 22px', borderLeft: `3px solid ${C.accent}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="panel fade-up" style={{ padding: '18px 22px', borderLeft: `3px solid ${C.accent}`, display: 'flex', alignItems: 'center', gap: 12 }}>
       <div className="spinner" />
       <div>
         <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13, color: C.accent }}>Extrayendo estructura del perfil…</div>
@@ -527,7 +840,7 @@ function ProfileCard({ profile, loading }) {
   if (!profile) return null
 
   return (
-    <div className="glow-card fade-up" style={{ borderLeft: `3px solid ${C.accent}`, marginBottom: 4 }}>
+    <div className="panel fade-up" style={{ borderLeft: `3px solid ${C.accent}`, marginBottom: 4 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: collapsed ? 'none' : `1px solid ${C.border}`, cursor: 'pointer' }} onClick={() => setCollapsed(c => !c)}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(79,125,243,0.08)', border: `1px solid rgba(79,125,243,0.2)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📋</div>
@@ -535,7 +848,7 @@ function ProfileCard({ profile, loading }) {
           <div style={{ fontSize: 9, color: C.accent, fontFamily: "'DM Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
             Cuadro Resumen del Cargo · Referencia de Contraste
           </div>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1, color: C.text }}>
+          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1, color: C.text }}>
             {profile.nombreCargo || 'Cargo no identificado'}
           </div>
           {(profile.area || profile.dependencia) && (
@@ -747,7 +1060,7 @@ function CompetencyDictCard({ dict, loading }) {
   const [expanded, setExpanded]   = useState(null)
 
   if (loading) return (
-    <div className="glow-card fade-up" style={{ padding: '18px 22px', borderLeft: `3px solid ${C.gold}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="panel fade-up" style={{ padding: '18px 22px', borderLeft: `3px solid ${C.gold}`, display: 'flex', alignItems: 'center', gap: 12 }}>
       <div className="spinner" />
       <div>
         <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13, color: C.gold }}>Extrayendo diccionario de competencias…</div>
@@ -765,7 +1078,7 @@ function CompetencyDictCard({ dict, loading }) {
   }, {})
 
   return (
-    <div className="glow-card fade-up" style={{ borderLeft: `3px solid ${C.gold}` }}>
+    <div className="panel fade-up" style={{ borderLeft: `3px solid ${C.gold}` }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: collapsed ? 'none' : `1px solid ${C.border}`, cursor: 'pointer' }}
         onClick={() => setCollapsed(c => !c)}>
@@ -774,7 +1087,7 @@ function CompetencyDictCard({ dict, loading }) {
           <div style={{ fontSize: 9, color: C.gold, fontFamily: "'DM Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
             Diccionario de Competencias · Referencia de Contraste
           </div>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.1, color: C.text }}>
+          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 17, lineHeight: 1.1, color: C.text }}>
             {dict.nombreCargo || 'Cargo'} — {comps.length} competencias identificadas
           </div>
         </div>
@@ -912,7 +1225,7 @@ function CandidateCard({ candidate: c, idx }) {
   const borderLeft = `3px solid ${idx < 3 ? rankColors[idx] : C.border}`
 
   return (
-    <div className="glow-card slide-in" style={{ padding: '20px 22px', borderLeft, animationDelay: `${idx * 0.06}s` }}>
+    <div className="panel slide-in" style={{ padding: '20px 22px', borderLeft, animationDelay: `${idx * 0.06}s` }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
         <ScoreRing score={c.score} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -921,7 +1234,7 @@ function CandidateCard({ candidate: c, idx }) {
               {rankLabels[idx]}
             </div>
           )}
-          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.2, marginBottom: 5 }}>{c.name || 'Candidato'}</div>
+          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 17, lineHeight: 1.2, marginBottom: 5 }}>{c.name || 'Candidato'}</div>
           <div style={{ fontSize: 11, color: C.dim, marginBottom: 7 }}>{c.fileName}</div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
             {c.recommendation && <RecoBadge reco={c.recommendation} />}
@@ -1033,7 +1346,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
 
       {/* MATRIZ */}
       {tab === 'matrix' && (
-        <div className="glow-card" style={{ overflow: 'auto' }}>
+        <div className="panel" style={{ overflow: 'auto' }}>
           <table className="cmp-table">
             <thead>
               <tr>
@@ -1051,7 +1364,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
                 return (
                   <tr key={i}>
                     <td>
-                      <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14 }}>{row.name}</div>
+                      <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14 }}>{row.name}</div>
                       {i < 3 && <div style={{ fontSize: 9, color: ['#EAB308','#94A3B8','#CD8B45'][i], fontFamily: "'DM Mono'", fontWeight: 700, letterSpacing: '.08em', marginTop: 2 }}>
                         {['🥇 MEJOR MATCH','🥈 2° LUGAR','🥉 3° LUGAR'][i]}
                       </div>}
@@ -1081,16 +1394,16 @@ function ComparativePanel({ compareResults, onExportCSV }) {
           {matrix.map((row, i) => {
             const comps = row.f?.competencies || row.co?.competencies
             if (!comps) return (
-              <div key={i} className="glow-card" style={{ padding: 18, textAlign: 'center' }}>
-                <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{row.name}</div>
+              <div key={i} className="panel" style={{ padding: 18, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{row.name}</div>
                 <div style={{ fontSize: 12, color: C.dim }}>Sin datos de competencias</div>
               </div>
             )
             const colors = [C.gold, C.accent, C.green, C.purple]
             const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
             return (
-              <div key={i} className="glow-card" style={{ padding: '18px', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{row.name}</div>
+              <div key={i} className="panel" style={{ padding: '18px', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{row.name}</div>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                   {reco && <RecoBadge reco={reco} />}
                   <span style={{ fontFamily: "'DM Mono'", color: scoreColor(row.avg), fontWeight: 700, fontSize: 13 }}>AVG: {row.avg}</span>
@@ -1112,10 +1425,10 @@ function ComparativePanel({ compareResults, onExportCSV }) {
             const summary = row.f?.summary || row.p?.summary
             const rankColor = ['#EAB308','#94A3B8','#CD8B45'][i] || C.border
             return (
-              <div key={i} className="glow-card" style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, borderLeft: `3px solid ${rankColor}` }}>
+              <div key={i} className="panel" style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, borderLeft: `3px solid ${rankColor}` }}>
                 <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 22, color: C.dim, minWidth: 32 }}>#{i + 1}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>{row.name}</div>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>{row.name}</div>
                   {summary && <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{summary}</div>}
                 </div>
                 <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1414,222 +1727,421 @@ ${content.slice(0, 4000)}`
   }
 
   // ─── RENDER ───────────────────────────────────────────────────────────────────
+  const activeMode = MODES.find(m => m.id === mode)
+
+  const LOAD_STEPS = {
+    profile:      ['Procesando documentos', 'Contrastando perfil', 'Generando evaluación'],
+    competencies: ['Procesando documentos', 'Aplicando diccionario', 'Levantando evidencias'],
+    full:         ['Procesando documentos', 'Análisis curricular', 'Análisis competencial', 'Integrando 360°'],
+    compare:      ['Análisis de Perfil', 'Análisis Competencias', 'Análisis 360°'],
+  }
+  const steps = LOAD_STEPS[mode] || LOAD_STEPS.profile
+  const currentStep = loadMsg
+    ? steps.findIndex(s => loadMsg.toLowerCase().includes(s.split(' ')[0].toLowerCase()))
+    : 0
+  const stepIdx = currentStep === -1 ? 0 : currentStep
+
   return (
     <>
       <style>{CSS}</style>
-      {/* BG */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-        background: C.bg }} />
+      <div className="bg-grid" />
+      <div className="bg-glow" />
 
       {/* HEADER */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 54, background: 'rgba(6,8,16,.9)', backdropFilter: 'blur(16px)', borderBottom: `1px solid ${C.border}` }}>
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 100,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 24px', height: 57,
+        background: `rgba(8,8,10,0.92)`, backdropFilter: 'blur(20px)',
+        borderBottom: `1px solid ${C.border}`,
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 13, color: '#000', boxShadow: `0 0 16px ${C.accent}40` }}>G</div>
+          <div style={{
+            width: 30, height: 30, borderRadius: 7,
+            background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 12, color: '#fff',
+            boxShadow: `0 0 14px ${C.accentGlow}`,
+          }}>G</div>
           <div>
-            <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 15 }}>
-              <span style={{ color: C.accent }}>#</span>Match<span style={{ color: C.muted, fontWeight: 300 }}>Via</span>Geperex
+            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: '-.01em' }}>
+              <span style={{ color: C.accent }}>#</span>Match<span style={{ color: C.muted, fontWeight: 600 }}>Via</span>Geperex
             </div>
-            <div style={{ fontFamily: "'DM Mono'", fontSize: 9, color: C.dim, letterSpacing: '.1em' }}>GEPEREX LIMITADA · RUT 78.110.793-K</div>
+            <div style={{ fontFamily: "'DM Mono'", fontSize: 8.5, color: C.dim, letterSpacing: '.09em', marginTop: 1 }}>
+              GEPEREX LIMITADA · RUT 78.110.793-K
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontFamily: "'DM Mono'", fontSize: 12, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '5px 13px', fontWeight: 700 }}>
-            ⬡ {credits} créditos
-          </div>
-          <button onClick={() => setModal(true)} style={{ padding: '5px 13px', borderRadius: 100, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans'", fontWeight: 600 }}>+ Comprar</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            fontFamily: "'DM Mono'", fontSize: 11, color: C.goldLt,
+            background: C.goldDim, border: `1px solid ${C.gold}25`,
+            borderRadius: 100, padding: '4px 12px', fontWeight: 600,
+          }}>⬡ {credits} cr</span>
+          <button onClick={() => setModal(true)} style={{
+            padding: '4px 12px', borderRadius: 100,
+            border: `1px solid ${C.border}`, background: 'transparent',
+            color: C.muted, fontSize: 11, cursor: 'pointer',
+            fontFamily: "'DM Sans'", fontWeight: 600, transition: 'all .15s',
+          }}>+ Recargar</button>
         </div>
       </header>
 
-      {/* MAIN */}
-      <main style={{ position: 'relative', zIndex: 5, maxWidth: 1100, margin: '0 auto', padding: '36px 18px 80px' }}>
-        {/* Hero */}
-        <div className="fade-up" style={{ marginBottom: 34, textAlign: 'center' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(79,125,243,0.08)', border: `1px solid rgba(79,125,243,0.2)`, borderRadius: 100, padding: '4px 14px', fontSize: 10, color: C.accent, fontFamily: "'DM Mono'", letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 14 }}>
-            ◈ Motor de Selección IA + OCR · v2.0
-          </div>
-          <h1 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 'clamp(1.9rem,5vw,3rem)', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 12 }}>
-            <span style={{ color: C.accent }}>#</span>Match<em style={{ fontStyle: 'italic', color: C.muted, fontWeight: 300 }}>Via</em><span style={{ color: '#8AAAF7' }}>Geperex</span>
-          </h1>
-          <p style={{ color: C.muted, fontSize: 14, maxWidth: 480, margin: '0 auto', lineHeight: 1.7, fontWeight: 300 }}>
-            Tres modos de análisis con <strong style={{ color: C.text, fontWeight: 500 }}>prompts especializados</strong> + <strong style={{ color: C.purple, fontWeight: 500 }}>Vista Comparativa Cross-Modal</strong> con radar charts y exportación CSV.
-          </p>
-        </div>
+      {/* APP SHELL */}
+      <div className="app-shell">
 
-        {/* Workflow grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 14 }}>
-          {/* Step 1 */}
-          <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.05s' }}>
-            <StepHeader n="1" label="Perfil del Puesto" />
-            <DropZone icon="📄" label="Subir Perfil" hint=".txt · .pdf · .docx" multiple={false} onFiles={handleJobFiles} inputRef={jobRef} />
-            {jobFile && (
-              <div style={{ marginTop: 8 }}>
-                <FileItem name={jobFile.name} status={jobFile.status} onRemove={() => { setJobFile(null); if (jobRef.current) jobRef.current.value = '' }} />
-                {jobFile.status === 'loading' && loadMsg && <div style={{ fontSize: 10, color: C.amber, marginTop: 4 }}>⟳ {loadMsg}</div>}
-              </div>
-            )}
+        {/* ── SIDEBAR ─────────────────────────────────────── */}
+        <aside className="sidebar">
+
+          {/* Wordmark */}
+          <div style={{ paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
+            <div style={{
+              fontFamily: "'Syne',sans-serif", fontWeight: 800,
+              fontSize: 22, letterSpacing: '-.03em', lineHeight: 1.1, marginBottom: 6,
+            }}>
+              Motor de<br />
+              <span style={{ color: C.accent }}>Selección</span> IA
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, fontWeight: 300 }}>
+              Análisis curricular + competencial con prompts especializados y radar charts.
+            </div>
           </div>
 
-          {/* Step 2 */}
-          <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.1s' }}>
-            <StepHeader n="2" label="CVs Candidatos" />
-            <DropZone icon="👥" label="Subir CVs" hint=".txt · .pdf · .docx · Múltiples" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
-            {cvFiles.length > 0 && (
-              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 200, overflowY: 'auto' }}>
-                {cvFiles.map((cv, i) => <FileItem key={i} name={cv.name} status={cv.status} onRemove={() => setCvFiles(p => p.filter((_, j) => j !== i))} />)}
-              </div>
-            )}
+          {/* Step 1 — Perfil */}
+          <div className="sidebar-section">
+            <div className="sidebar-section-hd">
+              <div className="step-badge" style={{ background: C.accent }}>1</div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Perfil del Puesto</span>
+              {jobFile?.status === 'ready' && (
+                <span className="tag" style={{ marginLeft: 'auto', color: C.greenLt, borderColor: `${C.green}35`, background: C.greenDim, fontSize: 9 }}>LISTO</span>
+              )}
+            </div>
+            <div className="sidebar-section-bd">
+              <DropZone icon="📄" label="Subir Perfil" hint=".txt · .pdf · .docx" multiple={false} onFiles={handleJobFiles} inputRef={jobRef} />
+              {jobFile && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <FileItem name={jobFile.name} status={jobFile.status} onRemove={() => { setJobFile(null); if (jobRef.current) jobRef.current.value = '' }} />
+                  {jobFile.status === 'loading' && loadMsg && (
+                    <div style={{ fontSize: 10, color: C.amberLt, fontFamily: "'DM Mono'", paddingLeft: 2 }}>↳ {loadMsg}</div>
+                  )}
+                </div>
+              )}
+              {(profileLoading || competencyLoading) && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, animation: 'pulse 1.2s ease infinite' }}>
+                  <div className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, color: C.muted, fontFamily: "'DM Mono'" }}>
+                    {profileLoading ? 'Extrayendo estructura…' : 'Construyendo diccionario…'}
+                  </span>
+                </div>
+              )}
+              {profileData && !profileLoading && (
+                <div style={{ marginTop: 6, fontSize: 10, color: C.greenLt, fontFamily: "'DM Mono'", display: 'flex', alignItems: 'center', gap: 4 }}>
+                  ✓ Perfil estructurado
+                </div>
+              )}
+              {competencyDict && !competencyLoading && (
+                <div style={{ marginTop: 2, fontSize: 10, color: C.tealLt, fontFamily: "'DM Mono'", display: 'flex', alignItems: 'center', gap: 4 }}>
+                  ✓ Diccionario ({competencyDict.competencias?.length ?? '?'} competencias)
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Step 3 */}
-          <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.15s' }}>
-            <StepHeader n="3" label="Tipo de Análisis" />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
+          {/* Step 2 — CVs */}
+          <div className="sidebar-section">
+            <div className="sidebar-section-hd">
+              <div className="step-badge" style={{ background: C.gold }}>2</div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>CVs Candidatos</span>
+              {cvFiles.length > 0 && (
+                <span className="tag" style={{ marginLeft: 'auto', color: C.goldLt, borderColor: `${C.gold}35`, background: C.goldDim, fontSize: 9 }}>{cvFiles.length} CV{cvFiles.length > 1 ? 's' : ''}</span>
+              )}
+            </div>
+            <div className="sidebar-section-bd">
+              <DropZone icon="👥" label="Subir CVs" hint=".txt · .pdf · .docx · Múltiples" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
+              {cvFiles.length > 0 && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto' }}>
+                  {cvFiles.map((cv, i) => (
+                    <FileItem key={i} name={cv.name} status={cv.status} onRemove={() => setCvFiles(p => p.filter((_, j) => j !== i))} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Step 3 — Modo */}
+          <div className="sidebar-section">
+            <div className="sidebar-section-hd">
+              <div className="step-badge" style={{ background: activeMode?.color ?? C.purple }}>3</div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Tipo de Análisis</span>
+            </div>
+            <div className="sidebar-section-bd" style={{ padding: '10px 12px' }}>
               {MODES.map(m => (
-                <button key={m.id} onClick={() => setMode(m.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: mode === m.id ? `${m.color}12` : 'transparent', border: `1px solid ${mode === m.id ? m.color + '50' : C.border}`, borderRadius: 8, cursor: 'pointer', transition: 'all .2s', fontFamily: "'DM Sans'", fontSize: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <span>{m.icon}</span>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ color: mode === m.id ? m.color : C.text, fontWeight: 600 }}>{m.label}</div>
-                      <div style={{ fontSize: 10, color: C.dim, marginTop: 1 }}>{m.desc}</div>
+                <button key={m.id} className="mode-btn"
+                  onClick={() => setMode(m.id)}
+                  style={{
+                    background: mode === m.id ? `${m.color}10` : 'transparent',
+                    borderColor: mode === m.id ? `${m.color}45` : C.border,
+                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>{m.icon}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ color: mode === m.id ? m.color : C.text, fontWeight: 600, fontSize: 12 }}>{m.label}</div>
+                      <div style={{ fontSize: 10, color: C.dim, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.desc}</div>
                     </div>
                   </div>
-                  <span style={{ fontFamily: "'DM Mono'", fontSize: 10, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '2px 7px', fontWeight: 700, flexShrink: 0 }}>{m.cost}cr</span>
+                  <span className="tag" style={{ color: C.goldLt, borderColor: `${C.gold}30`, background: C.goldDim, marginLeft: 6, flexShrink: 0 }}>
+                    {m.cost}cr
+                  </span>
                 </button>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: 7 }}>
-              <button onClick={analyze} disabled={!canAnalyze} style={{ flex: 1, padding: '9px', borderRadius: 8, border: 'none', background: canAnalyze ? C.accent : C.surface, color: canAnalyze ? '#fff' : C.dim, fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13, cursor: canAnalyze ? 'pointer' : 'not-allowed', opacity: canAnalyze ? 1 : .5, transition: 'all .2s', boxShadow: canAnalyze ? `0 4px 16px ${C.accent}30` : 'none' }}>
-                {loading ? '⟳ Analizando…' : '◈ Analizar'}
-              </button>
-              <button onClick={reset} style={{ padding: '9px 13px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'DM Sans'", fontSize: 13, fontWeight: 600 }}>↺</button>
-            </div>
-            {canAnalyze && (
-              <div style={{ marginTop: 8, fontSize: 11, color: C.dim, textAlign: 'center' }}>
-                Costo: <span style={{ color: C.gold, fontWeight: 700 }}>{totalCost} créditos</span>
-                {mode === 'compare' && <span style={{ color: C.muted }}> · 3 análisis paralelos</span>}
+          </div>
+
+          {/* CTA */}
+          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {canAnalyze && !loading && (
+              <div style={{ fontSize: 11, color: C.dim, textAlign: 'center', fontFamily: "'DM Mono'" }}>
+                Costo: <span style={{ color: C.goldLt, fontWeight: 600 }}>{totalCost} créditos</span>
               </div>
             )}
-            {error && <div style={{ marginTop: 10, background: C.redDim, border: `1px solid ${C.red}30`, borderRadius: 8, padding: '10px 12px', fontSize: 12, color: C.red, lineHeight: 1.5 }}>⚠ {error}</div>}
+            <button
+              className={`cta-btn ${loading ? 'loading' : canAnalyze ? 'active' : 'inactive'}`}
+              onClick={analyze} disabled={!canAnalyze || loading}
+            >
+              {loading ? (
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                  Analizando…
+                </span>
+              ) : '◈ Iniciar Análisis'}
+            </button>
+            <button onClick={reset} style={{
+              width: '100%', padding: '8px', borderRadius: 8,
+              border: `1px solid ${C.border}`, background: 'transparent',
+              color: C.muted, cursor: 'pointer',
+              fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 500, transition: 'all .15s',
+            }}>↺ Nuevo proceso</button>
+            {error && (
+              <div style={{
+                background: C.redDim, border: `1px solid ${C.red}30`,
+                borderRadius: 8, padding: '9px 11px',
+                fontSize: 11, color: C.redLt, lineHeight: 1.5,
+              }}>⚠ {error}</div>
+            )}
           </div>
-        </div>
 
-        {/* Results area */}
-        <div style={{ marginTop: 32 }}>
+        </aside>
 
-          {/* ── PROFILE CARD: cuadro estructurado (siempre visible tras cargar perfil) */}
-          {(profileData || profileLoading) && (
+        {/* ── CONTENT ─────────────────────────────────────── */}
+        <main className="content">
+
+          {/* Loading */}
+          {loading && (
+            <div className="panel fade-in" style={{ padding: '36px 28px', textAlign: 'center' }}>
+              <div className="spinner" style={{ margin: '0 auto 20px' }} />
+              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 17, marginBottom: 4 }}>
+                Procesando análisis
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, marginBottom: 20 }}>
+                {loadMsg || 'Iniciando…'}
+              </div>
+              <div className="progress-steps">
+                {steps.map((s, i) => (
+                  <div key={i} className={`progress-step ${i < stepIdx ? 'done' : i === stepIdx ? 'active' : 'pending'}`}>
+                    <span style={{ flexShrink: 0 }}>{i < stepIdx ? '✓' : i === stepIdx ? '›' : '○'}</span>
+                    {s}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Profile + Competency cards */}
+          {!loading && (profileData || profileLoading) && (
             <div style={{ marginBottom: 12 }}>
               <ProfileCard profile={profileData} loading={profileLoading} />
             </div>
           )}
-
-          {/* ── COMPETENCY DICT CARD: diccionario de competencias */}
-          {(competencyDict || competencyLoading) && (
+          {!loading && (competencyDict || competencyLoading) && (
             <div style={{ marginBottom: 20 }}>
               <CompetencyDictCard dict={competencyDict} loading={competencyLoading} />
             </div>
           )}
 
-          {(results || compareResults) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          {/* View tabs */}
+          {!loading && (results || compareResults) && (
+            <div className="view-tabs">
               {results && (
-                <button onClick={() => setActiveView('results')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'results' ? C.accent : C.border}`, background: activeView === 'results' ? C.accentDim : 'transparent', color: activeView === 'results' ? C.accent : C.muted, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                  📋 Resultados
+                <button className="view-tab"
+                  onClick={() => setActiveView('results')}
+                  style={{
+                    color: activeView === 'results' ? C.accent : C.muted,
+                    borderColor: activeView === 'results' ? `${C.accent}50` : C.border,
+                    background: activeView === 'results' ? C.accentDim : 'transparent',
+                  }}>
+                  ◈ Resultados <span style={{ fontFamily: "'DM Mono'", fontSize: 10, opacity: .7 }}>({results.candidates.length})</span>
                 </button>
               )}
               {compareResults && (
-                <button onClick={() => setActiveView('compare')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'compare' ? C.purple : C.border}`, background: activeView === 'compare' ? C.purpleDim : 'transparent', color: activeView === 'compare' ? C.purple : C.muted, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                <button className="view-tab"
+                  onClick={() => setActiveView('compare')}
+                  style={{
+                    color: activeView === 'compare' ? C.purpleLt : C.muted,
+                    borderColor: activeView === 'compare' ? `${C.purple}50` : C.border,
+                    background: activeView === 'compare' ? C.purpleDim : 'transparent',
+                  }}>
                   ⚡ Vista Comparativa
                 </button>
               )}
             </div>
           )}
 
-          {loading && (
-            <div className="glow-card" style={{ padding: '48px 28px', textAlign: 'center' }}>
-              <div className="spinner" style={{ margin: '0 auto 16px' }} />
-              <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{loadMsg || 'Procesando…'}</div>
-              {mode === 'compare' && <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados ejecutándose en paralelo</div>}
-            </div>
-          )}
-
+          {/* Results */}
           {!loading && activeView === 'results' && results && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ marginBottom: 6 }}>
-                <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20 }}>
-                  {MODES.find(m => m.id === results.mode)?.label}
-                </h2>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{results.candidates.length} candidato(s) evaluado(s)</div>
+            <div className="fade-up">
+              <div className="results-hd">
+                <div>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 18 }}>
+                    {MODES.find(m => m.id === results.mode)?.label}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2, fontFamily: "'DM Mono'" }}>
+                    {results.candidates.length} candidato{results.candidates.length !== 1 ? 's' : ''} evaluado{results.candidates.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
               </div>
               {results.candidates.map((c, i) => <CandidateCard key={i} candidate={c} idx={i} />)}
             </div>
           )}
 
+          {/* Comparative */}
           {!loading && activeView === 'compare' && compareResults && (
-            <div>
-              <div style={{ marginBottom: 20 }}>
-                <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Vista Comparativa Cross-Modal</h2>
-                <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados · Comparación matricial · Radar charts · Exportación CSV</div>
+            <div className="fade-up">
+              <div className="results-hd">
+                <div>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 18 }}>Vista Comparativa Cross-Modal</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2, fontFamily: "'DM Mono'" }}>
+                    3 análisis especializados · Radar charts · Exportación CSV
+                  </div>
+                </div>
               </div>
               <ComparativePanel compareResults={compareResults} onExportCSV={exportCSV} />
             </div>
           )}
 
-          {!loading && !results && !compareResults && (
-            <div style={{ textAlign: 'center', padding: '52px 24px', background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 14 }}>
-              <div style={{ fontSize: 40, opacity: .2, marginBottom: 14 }}>◈</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, color: C.muted, marginBottom: 8 }}>Sin resultados aún</div>
-              <div style={{ color: C.dim, fontSize: 13, maxWidth: 380, margin: '0 auto', lineHeight: 1.7 }}>
-                Sube archivos, elige análisis y presiona <strong style={{ color: C.text }}>Analizar</strong>.<br />
-                Para la <strong style={{ color: C.purple }}>Vista Comparativa ⚡</strong>, selecciona ese modo.<br /><br />
-                <span style={{ fontSize: 11, color: C.accent }}>✓ OCR activo · 3 prompts especializados · Radar SVG · CSV exportable</span>
+          {/* Empty — sin datos aún */}
+          {!loading && !results && !compareResults && !profileData && !competencyDict && (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', minHeight: '60vh',
+              textAlign: 'center', padding: '0 24px',
+            }}>
+              <div style={{
+                width: 80, height: 80, border: `1px solid ${C.border}`,
+                borderRadius: 16, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', marginBottom: 20,
+                background: C.surface, position: 'relative',
+              }}>
+                <span style={{ fontSize: 32, opacity: .2 }}>◈</span>
+                <div style={{
+                  position: 'absolute', inset: -1, borderRadius: 16,
+                  background: `radial-gradient(circle at 50% 0%, ${C.accentGlow} 0%, transparent 60%)`,
+                  pointerEvents: 'none',
+                }} />
+              </div>
+              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 20, marginBottom: 8, letterSpacing: '-.02em' }}>
+                Listo para analizar
+              </div>
+              <div style={{ color: C.muted, fontSize: 13, maxWidth: 320, lineHeight: 1.7, marginBottom: 24 }}>
+                Sube el perfil del puesto y los CVs desde el panel izquierdo, luego selecciona el tipo de análisis.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {[
+                  { icon: '📋', label: 'Perfil Curricular', color: C.accent },
+                  { icon: '🧠', label: 'Competencias', color: C.gold },
+                  { icon: '🔬', label: 'Análisis 360°', color: C.green },
+                  { icon: '⚡', label: 'Comparativa', color: C.purpleLt },
+                ].map(({ icon, label, color }) => (
+                  <div key={label} style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '5px 12px', borderRadius: 100,
+                    border: `1px solid ${color}25`, background: `${color}08`,
+                    fontSize: 11, color, fontWeight: 600, fontFamily: "'DM Mono'",
+                  }}>
+                    {icon} {label}
+                  </div>
+                ))}
               </div>
             </div>
           )}
-        </div>
-      </main>
+
+          {/* Empty — perfil cargado, esperando CVs */}
+          {!loading && !results && !compareResults && (profileData || competencyDict) && cvFiles.length === 0 && (
+            <div style={{
+              textAlign: 'center', padding: '40px 24px',
+              border: `1px dashed ${C.border}`, borderRadius: 12, background: C.surface,
+            }}>
+              <div style={{ fontSize: 11, color: C.greenLt, fontFamily: "'DM Mono'", marginBottom: 6 }}>
+                ✓ Perfil procesado y estructurado
+              </div>
+              <div style={{ fontSize: 13, color: C.dim }}>
+                Sube los CVs de candidatos para continuar
+              </div>
+            </div>
+          )}
+
+        </main>
+      </div>
 
       {/* FOOTER */}
-      <footer style={{ position: 'relative', zIndex: 5, textAlign: 'center', padding: '18px 24px', borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.dim }}>
-        © {new Date().getFullYear()} <strong style={{ color: C.muted }}>Geperex Limitada</strong> · RUT 78.110.793-K · #MatchViaGeperex · Powered by Claude AI
+      <footer style={{
+        position: 'relative', zIndex: 5, textAlign: 'center',
+        padding: '14px 24px', borderTop: `1px solid ${C.border}`,
+        fontSize: 10, color: C.dim, fontFamily: "'DM Mono'", letterSpacing: '.05em',
+      }}>
+        © {new Date().getFullYear()} GEPEREX LIMITADA · RUT 78.110.793-K · #MatchViaGeperex · Powered by Claude AI
       </footer>
 
       {/* MODAL */}
       {modal && (
-        <div onClick={e => { if (e.target === e.currentTarget) setModal(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,16,.87)', backdropFilter: 'blur(10px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
-          <div className="glow-card" style={{ padding: 28, maxWidth: 370, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
-            <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>⬡ Comprar Créditos</div>
-            <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.6, marginBottom: 20, fontWeight: 300 }}>Elige el paquete para tus procesos de selección.</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 18 }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setModal(false) }}>
+          <div className="modal-box">
+            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 6 }}>Recargar Créditos</div>
+            <div style={{ color: C.muted, fontSize: 12, lineHeight: 1.6, marginBottom: 18 }}>
+              Selecciona el paquete para tu proceso de selección.
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
               {[[50,'$4.990'],[150,'$12.990'],[500,'$34.990']].map(([amt, price]) => (
-                <div key={amt} onClick={() => { setCredits(c => c + amt); setModal(false); notify('⬡', `+${amt} créditos añadidos`) }}
-                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 10px', textAlign: 'center', cursor: 'pointer', transition: 'border-color .2s' }}>
-                  <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 22, color: C.gold }}>{amt}</div>
-                  <div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>créditos</div>
-                  <div style={{ fontSize: 13, color: C.muted, marginTop: 6, fontWeight: 500 }}>{price}</div>
+                <div key={amt} className="credit-card"
+                  onClick={() => { setCredits(c => c + amt); setModal(false); notify('⬡', `+${amt} créditos añadidos`) }}>
+                  <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 22, color: C.goldLt }}>{amt}</div>
+                  <div style={{ fontSize: 9, color: C.dim, marginTop: 1, fontFamily: "'DM Mono'" }}>créditos</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 6, fontWeight: 500 }}>{price}</div>
                 </div>
               ))}
             </div>
-            <button onClick={() => setModal(false)} style={{ width: '100%', padding: '9px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'DM Sans'", fontWeight: 600 }}>Cerrar</button>
+            <button onClick={() => setModal(false)} style={{
+              width: '100%', padding: '8px', borderRadius: 8,
+              border: `1px solid ${C.border}`, background: 'transparent',
+              color: C.muted, cursor: 'pointer', fontFamily: "'DM Sans'", fontWeight: 600, fontSize: 12,
+            }}>Cerrar</button>
           </div>
         </div>
       )}
 
       {/* TOAST */}
       {toast && (
-        <div style={{ position: 'fixed', bottom: 20, right: 20, background: C.card, border: `1px solid ${toast.type === 's' ? C.green + '40' : C.red + '40'}`, borderRadius: 10, padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: C.text, zIndex: 300, boxShadow: '0 8px 40px rgba(0,0,0,.6)', maxWidth: 320, animation: 'slideIn .3s ease' }}>
-          <span>{toast.icon}</span><span>{toast.msg}</span>
+        <div className="toast" style={{ borderColor: toast.type === 's' ? `${C.green}40` : `${C.red}40` }}>
+          <span>{toast.icon}</span><span style={{ fontSize: 12 }}>{toast.msg}</span>
         </div>
       )}
     </>
   )
 }
 
-// ─── STEP HEADER (inline helper) ─────────────────────────────────────────────
+// ─── STEP HEADER ─────────────────────────────────────────────────────────────
 function StepHeader({ n, label }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-      <div style={{ width: 22, height: 22, borderRadius: 6, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: "'DM Mono'", flexShrink: 0 }}>{n}</div>
+      <div className="step-badge" style={{ background: C.accent }}>{n}</div>
       <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13 }}>{label}</div>
     </div>
   )
