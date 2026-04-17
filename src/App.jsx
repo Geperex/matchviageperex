@@ -1,41 +1,48 @@
 import { useState, useRef } from 'react'
 import { extractText } from './extractor.js'
 
-// ─── DESIGN TOKENS — LIGHT THEME ─────────────────────────────────────────────
+// ─── DESIGN TOKENS — GEPEREX BRAND ───────────────────────────────────────────
+// Paleta: Azul marino #1B2A4A · Dorado #C9853A · Blanco #F5F6F8
 const C = {
   bg:        '#F5F6F8',
   bgAlt:     '#ECEEF2',
   surface:   '#FFFFFF',
   card:      '#FFFFFF',
-  cardHi:    '#F9FAFB',
+  cardHi:    '#F8F9FA',
   border:    '#E2E5EA',
   borderHi:  '#C8CDD6',
-  accent:    '#2558D9',
-  accentLt:  '#3D6FE8',
-  accentDim: 'rgba(37,88,217,0.08)',
-  accentGlow:'rgba(37,88,217,0.12)',
-  gold:      '#966E10',
-  goldLt:    '#B8922A',
-  goldDim:   'rgba(150,110,16,0.08)',
-  green:     '#1A7A45',
-  greenLt:   '#22A05A',
-  greenDim:  'rgba(26,122,69,0.08)',
-  red:       '#B91C1C',
-  redLt:     '#DC2626',
-  redDim:    'rgba(185,28,28,0.08)',
-  amber:     '#9A5A00',
-  amberLt:   '#C47300',
-  amberDim:  'rgba(154,90,0,0.08)',
-  purple:    '#5B4ED6',
-  purpleLt:  '#7B68EE',
-  purpleDim: 'rgba(91,78,214,0.08)',
-  teal:      '#0E7A6A',
-  tealLt:    '#0FA37D',
-  tealDim:   'rgba(14,122,106,0.08)',
-  text:      '#111318',
-  muted:     '#5A6070',
-  dim:       '#9AA0AE',
-  dimHi:     '#7A8090',
+  // Acento principal → Dorado Geperex
+  accent:    '#C9853A',
+  accentLt:  '#DFA05A',
+  accentDim: 'rgba(201,133,58,0.10)',
+  accentGlow:'rgba(201,133,58,0.15)',
+  // Navy Geperex → para headers, badges, fondos secundarios
+  navy:      '#1B2A4A',
+  navyLt:    '#243660',
+  navyDim:   'rgba(27,42,74,0.08)',
+  // Semáforos — usando variantes del brand
+  gold:      '#C9853A',
+  goldLt:    '#DFA05A',
+  goldDim:   'rgba(201,133,58,0.10)',
+  green:     '#1A6B3C',
+  greenLt:   '#1E8449',
+  greenDim:  'rgba(26,107,60,0.10)',
+  red:       '#A61C1C',
+  redLt:     '#C0392B',
+  redDim:    'rgba(166,28,28,0.10)',
+  amber:     '#C9853A',
+  amberLt:   '#DFA05A',
+  amberDim:  'rgba(201,133,58,0.10)',
+  purple:    '#1B2A4A',
+  purpleLt:  '#243660',
+  purpleDim: 'rgba(27,42,74,0.08)',
+  teal:      '#1A6B3C',
+  tealLt:    '#1E8449',
+  tealDim:   'rgba(26,107,60,0.10)',
+  text:      '#111827',
+  muted:     '#4B5563',
+  dim:       '#9CA3AF',
+  dimHi:     '#6B7280',
 }
 
 // ─── PROMPT: EXTRACCIÓN ESTRUCTURADA DEL PERFIL (Fase 1) ─────────────────────
@@ -336,14 +343,14 @@ score y scoreBreakdown y competencies de 0 a 100. Ordena candidatos por score de
 
 // ─── MODOS ────────────────────────────────────────────────────────────────────
 const MODES = [
-  { id: 'profile',      label: 'Análisis de Perfil',    icon: '📋', cost: 2, color: C.accent,  desc: 'Compatibilidad curricular vs. cargo' },
-  { id: 'competencies', label: 'Análisis Competencias', icon: '🧠', cost: 2, color: C.gold,    desc: 'Mapa competencial extraído del perfil' },
-  { id: 'full',         label: 'Análisis 360° Global',  icon: '🔬', cost: 3, color: C.green,   desc: 'Curricular + competencias + recomendación' },
-  { id: 'compare',      label: 'Vista Comparativa',     icon: '⚡', cost: 5, color: C.purple,  desc: '3 análisis en paralelo + Radar + CSV' },
+  { id: 'profile',      label: 'Análisis de Perfil',    icon: '📋', cost: 2, color: C.navy,    desc: 'Compatibilidad curricular vs. cargo' },
+  { id: 'competencies', label: 'Análisis Competencias', icon: '🧠', cost: 2, color: C.accent,  desc: 'Mapa competencial extraído del perfil' },
+  { id: 'full',         label: 'Análisis 360° Global',  icon: '🔬', cost: 3, color: C.navy,    desc: 'Curricular + competencias + recomendación' },
+  { id: 'compare',      label: 'Vista Comparativa',     icon: '⚡', cost: 5, color: C.navy,    desc: '3 análisis en paralelo + Radar + CSV' },
 ]
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-const scoreColor = v => v >= 75 ? C.greenLt : v >= 50 ? C.amberLt : C.redLt
+const scoreColor = v => v >= 75 ? C.navy : v >= 50 ? C.accent : C.redLt
 const RECO_CFG = {
   'CONTRATAR':     { color: C.greenLt,  bg: C.greenDim,  border: `${C.green}40`, icon: '✓', label: 'CONTRATAR' },
   'RESERVA':       { color: C.amberLt,  bg: C.amberDim,  border: `${C.amber}35`, icon: '◐', label: 'RESERVA' },
@@ -376,7 +383,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 .bg-glow{
   position:fixed;top:-120px;left:50%;transform:translateX(-50%);
   width:700px;height:300px;border-radius:50%;
-  background:radial-gradient(ellipse,${C.accentGlow} 0%,transparent 65%);
+  background:radial-gradient(ellipse,rgba(27,42,74,0.06) 0%,transparent 65%);
   z-index:0;pointer-events:none;filter:blur(40px);
 }
 
@@ -433,7 +440,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
 .panel:hover{border-color:${C.borderHi};box-shadow:0 2px 12px rgba(0,0,0,.07)}
-.panel-accent{border-left:3px solid ${C.accent}}
+.panel-accent{border-left:3px solid ${C.navy}}
 .panel-gold{border-left:3px solid ${C.gold}}
 .panel-green{border-left:3px solid ${C.green}}
 .panel-purple{border-left:3px solid ${C.purple}}
@@ -494,12 +501,12 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   letter-spacing:.02em;
 }
 .cta-btn.active{
-  background:${C.accent};color:#fff;
-  box-shadow:0 4px 20px ${C.accentGlow};
+  background:${C.navy};color:#fff;
+  box-shadow:0 4px 20px rgba(27,42,74,0.20);
 }
-.cta-btn.active:hover{background:${C.accentLt};box-shadow:0 6px 28px ${C.accentGlow}}
+.cta-btn.active:hover{background:${C.navyLt};box-shadow:0 6px 28px rgba(27,42,74,0.28)}
 .cta-btn.inactive{background:${C.surface};color:${C.dim};cursor:not-allowed;opacity:.6}
-.cta-btn.loading{background:${C.surface};color:${C.muted};cursor:wait}
+.cta-btn.loading{background:${C.bgAlt};color:${C.muted};cursor:wait;border:1px solid ${C.border}}
 
 /* Progress steps */
 .progress-steps{display:flex;flex-direction:column;gap:3px;margin-top:8px}
@@ -553,7 +560,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 .cmp-table tr:hover td{background:rgba(0,0,0,.022)}
 
 /* Spinner */
-.spinner{width:26px;height:26px;border:2px solid ${C.borderHi};border-top-color:${C.accent};border-radius:50%;animation:spin .65s linear infinite}
+.spinner{width:26px;height:26px;border:2px solid ${C.border};border-top-color:${C.navy};border-radius:50%;animation:spin .65s linear infinite}
 
 /* Dropzone */
 .drop-zone{
@@ -561,7 +568,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   padding:16px 12px;text-align:center;cursor:pointer;
   transition:all .2s;background:transparent;
 }
-.drop-zone:hover,.drop-zone.drag{border-color:${C.accent};background:${C.accentDim};box-shadow:0 0 0 3px ${C.accentDim}}
+.drop-zone:hover,.drop-zone.drag{border-color:${C.accent};background:${C.accentDim}}
 
 /* File item */
 .file-item{
@@ -789,7 +796,7 @@ function DropZone({ icon, label, hint, multiple, onFiles, inputRef }) {
         onChange={e => onFiles(e.target.files)}
         style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
       <div style={{ fontSize: 20, marginBottom: 5, opacity: .6 }}>{icon}</div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: C.accent }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{label}</div>
       <div style={{ fontSize: 10, color: C.dim, marginTop: 3, fontFamily: "'DM Mono'" }}>{hint}</div>
     </div>
   )
@@ -1761,13 +1768,13 @@ ${content.slice(0, 4000)}`
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 30, height: 30, borderRadius: 7,
-            background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 12, color: '#fff',
-            boxShadow: `0 0 14px ${C.accentGlow}`,
+            boxShadow: `0 0 14px ${C.navyDim}`,
           }}>G</div>
           <div>
             <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: '-.01em' }}>
-              <span style={{ color: C.accent }}>#</span>Match<span style={{ color: C.muted, fontWeight: 600 }}>Via</span>Geperex
+              <span style={{ color: C.accent }}>#</span>Match<span style={{ color: C.navy, fontWeight: 600, opacity:.6 }}>Via</span><span style={{ color: C.navy }}>Geperex</span>
             </div>
             <div style={{ fontFamily: "'DM Mono'", fontSize: 8.5, color: C.dim, letterSpacing: '.09em', marginTop: 1 }}>
               GEPEREX LIMITADA · RUT 78.110.793-K
@@ -1776,8 +1783,8 @@ ${content.slice(0, 4000)}`
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{
-            fontFamily: "'DM Mono'", fontSize: 11, color: C.goldLt,
-            background: C.goldDim, border: `1px solid ${C.gold}25`,
+            fontFamily: "'DM Mono'", fontSize: 11, color: C.accent,
+            background: C.accentDim, border: `1px solid ${C.accent}25`,
             borderRadius: 100, padding: '4px 12px', fontWeight: 600,
           }}>⬡ {credits} cr</span>
           <button onClick={() => setModal(true)} style={{
@@ -1802,7 +1809,7 @@ ${content.slice(0, 4000)}`
               fontSize: 22, letterSpacing: '-.03em', lineHeight: 1.1, marginBottom: 6,
             }}>
               Motor de<br />
-              <span style={{ color: C.accent }}>Selección</span> IA
+              <span style={{ color: C.accent }}>Selección</span> <span style={{ color: C.navy }}>IA</span>
             </div>
             <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, fontWeight: 300 }}>
               Análisis curricular + competencial con prompts especializados y radar charts.
@@ -1812,7 +1819,7 @@ ${content.slice(0, 4000)}`
           {/* Step 1 — Perfil */}
           <div className="sidebar-section">
             <div className="sidebar-section-hd">
-              <div className="step-badge" style={{ background: C.accent }}>1</div>
+              <div className="step-badge" style={{ background: C.navy }}>1</div>
               <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Perfil del Puesto</span>
               {jobFile?.status === 'ready' && (
                 <span className="tag" style={{ marginLeft: 'auto', color: C.greenLt, borderColor: `${C.green}35`, background: C.greenDim, fontSize: 9 }}>LISTO</span>
@@ -1852,7 +1859,7 @@ ${content.slice(0, 4000)}`
           {/* Step 2 — CVs */}
           <div className="sidebar-section">
             <div className="sidebar-section-hd">
-              <div className="step-badge" style={{ background: C.gold }}>2</div>
+              <div className="step-badge" style={{ background: C.accent }}>2</div>
               <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>CVs Candidatos</span>
               {cvFiles.length > 0 && (
                 <span className="tag" style={{ marginLeft: 'auto', color: C.goldLt, borderColor: `${C.gold}35`, background: C.goldDim, fontSize: 9 }}>{cvFiles.length} CV{cvFiles.length > 1 ? 's' : ''}</span>
@@ -1977,9 +1984,9 @@ ${content.slice(0, 4000)}`
                 <button className="view-tab"
                   onClick={() => setActiveView('results')}
                   style={{
-                    color: activeView === 'results' ? C.accent : C.muted,
-                    borderColor: activeView === 'results' ? `${C.accent}50` : C.border,
-                    background: activeView === 'results' ? C.accentDim : 'transparent',
+                    color: activeView === 'results' ? C.navy : C.muted,
+                    borderColor: activeView === 'results' ? `${C.navy}50` : C.border,
+                    background: activeView === 'results' ? C.navyDim : 'transparent',
                   }}>
                   ◈ Resultados <span style={{ fontFamily: "'DM Mono'", fontSize: 10, opacity: .7 }}>({results.candidates.length})</span>
                 </button>
@@ -1988,9 +1995,9 @@ ${content.slice(0, 4000)}`
                 <button className="view-tab"
                   onClick={() => setActiveView('compare')}
                   style={{
-                    color: activeView === 'compare' ? C.purpleLt : C.muted,
-                    borderColor: activeView === 'compare' ? `${C.purple}50` : C.border,
-                    background: activeView === 'compare' ? C.purpleDim : 'transparent',
+                    color: activeView === 'compare' ? C.accent : C.muted,
+                    borderColor: activeView === 'compare' ? `${C.accent}50` : C.border,
+                    background: activeView === 'compare' ? C.accentDim : 'transparent',
                   }}>
                   ⚡ Vista Comparativa
                 </button>
@@ -2046,7 +2053,7 @@ ${content.slice(0, 4000)}`
                 <span style={{ fontSize: 32, opacity: .2 }}>◈</span>
                 <div style={{
                   position: 'absolute', inset: -1, borderRadius: 16,
-                  background: `radial-gradient(circle at 50% 0%, ${C.accentGlow} 0%, transparent 60%)`,
+                  background: `radial-gradient(circle at 50% 0%, ${C.navyDim} 0%, transparent 60%)`,
                   pointerEvents: 'none',
                 }} />
               </div>
