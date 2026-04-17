@@ -690,62 +690,129 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 `
 
 // ─── RADAR CHART ──────────────────────────────────────────────────────────────
-function RadarChart({ competencies, color = C.accent, size = 210 }) {
-  const entries = Object.entries(competencies || {}).slice(0, 6)
+function RadarChart({ competencies, color = C.navy }) {
+  const entries = Object.entries(competencies || {})
   if (!entries.length) return null
-  const n = entries.length
-  const cx = size / 2, cy = size / 2
-  const r = size * 0.34
-  const labelR = r + size * 0.19
 
+  // Tamaño interno del polígono — el viewBox agrega margen para labels
+  const SIZE   = 260           // área de dibujo
+  const MARGIN = 64            // espacio para etiquetas alrededor
+  const VB     = SIZE + MARGIN * 2
+  const cx = VB / 2
+  const cy = VB / 2
+  const r  = SIZE * 0.40       // radio del polígono al 100%
+
+  const n     = entries.length
   const angle = i => (Math.PI * 2 * i) / n - Math.PI / 2
-  const pt = (i, val) => {
-    const a = angle(i), d = (val / 100) * r
+  const pt    = (i, pct) => {
+    const a = angle(i), d = (pct / 100) * r
     return [cx + d * Math.cos(a), cy + d * Math.sin(a)]
   }
 
+  // Anillos de referencia
   const rings = [25, 50, 75, 100]
-  const ringPaths = rings.map(pct =>
+  const ringPath = pct =>
     Array.from({ length: n }, (_, i) => pt(i, pct))
       .map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + 'Z'
-  )
+
+  // Radios (spokes)
   const spokes = Array.from({ length: n }, (_, i) => {
     const [x, y] = pt(i, 100)
-    return `M${cx},${cy}L${x.toFixed(1)},${y.toFixed(1)}`
+    return `M${cx.toFixed(1)},${cy.toFixed(1)}L${x.toFixed(1)},${y.toFixed(1)}`
   })
-  const dataPts = entries.map((_, i) => pt(i, entries[i][1]))
+
+  // Polígono de datos
+  const dataPts  = entries.map((_, i) => pt(i, entries[i][1]))
   const dataPath = dataPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + 'Z'
-  const uid = color.replace(/[^a-z0-9]/gi, '')
+
+  const uid = `radar_${color.replace(/[^a-z0-9]/gi, '')}`
+
+  // Color de relleno semitransparente
+  const fillColor = color === C.navy ? 'rgba(27,42,74,0.12)' : 'rgba(201,133,58,0.12)'
+  const strokeCol = color
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}
-      style={{ animation: 'radarIn .5s ease both', overflow: 'visible', display: 'block' }}>
-      <defs>
-        <radialGradient id={`rg${uid}`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={color} stopOpacity=".22" />
-          <stop offset="100%" stopColor={color} stopOpacity=".03" />
-        </radialGradient>
-      </defs>
-      {ringPaths.map((d, i) => <path key={i} d={d} fill="none" stroke={C.border} strokeWidth="1" />)}
-      {spokes.map((d, i) => <path key={i} d={d} stroke={C.border} strokeWidth="1" />)}
-      <path d={dataPath} fill={`url(#rg${uid})`} stroke={color} strokeWidth="1.5" />
-      {dataPts.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="3.5" fill={color} stroke={C.bg} strokeWidth="1.5" />
-      ))}
-      {entries.map(([name, val], i) => {
-        const a = angle(i)
-        const lx = cx + labelR * Math.cos(a)
-        const ly = cy + labelR * Math.sin(a)
-        const anchor = lx < cx - 5 ? 'end' : lx > cx + 5 ? 'start' : 'middle'
-        const label = name.length > 13 ? name.slice(0, 12) + '…' : name
-        return (
-          <g key={i}>
-            <text x={lx} y={ly - 5} textAnchor={anchor} fontSize="9" fontFamily="'DM Mono'" fill={C.muted} fontWeight="500">{label}</text>
-            <text x={lx} y={ly + 7} textAnchor={anchor} fontSize="10" fontFamily="'DM Mono'" fill={color} fontWeight="700">{val}</text>
-          </g>
-        )
-      })}
-    </svg>
+    <div style={{ width: '100%' }}>
+      <svg
+        viewBox={`0 0 ${VB} ${VB}`}
+        style={{ width: '100%', maxWidth: 340, display: 'block', margin: '0 auto', animation: 'radarIn .5s ease both' }}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <radialGradient id={uid} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={color} stopOpacity=".18" />
+            <stop offset="100%" stopColor={color} stopOpacity=".02" />
+          </radialGradient>
+        </defs>
+
+        {/* Anillos */}
+        {rings.map((pct, i) => (
+          <path key={i} d={ringPath(pct)} fill="none"
+            stroke={C.border} strokeWidth={pct === 100 ? 1.5 : 1}
+            strokeDasharray={pct === 100 ? 'none' : '3,3'}
+          />
+        ))}
+
+        {/* Labels de anillos (25, 50, 75) */}
+        {[25, 50, 75].map(pct => {
+          const [x, y] = pt(0, pct)
+          return (
+            <text key={pct} x={x + 3} y={y - 3}
+              fontSize="8" fontFamily="'DM Mono',monospace"
+              fill={C.dim} textAnchor="start">{pct}</text>
+          )
+        })}
+
+        {/* Spokes */}
+        {spokes.map((d, i) => (
+          <path key={i} d={d} stroke={C.borderHi} strokeWidth="1" />
+        ))}
+
+        {/* Polígono de datos */}
+        <path d={dataPath} fill={`url(#${uid})`} stroke={strokeCol} strokeWidth="2" strokeLinejoin="round" />
+
+        {/* Puntos */}
+        {dataPts.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r="4" fill={color} stroke={C.surface} strokeWidth="2" />
+        ))}
+
+        {/* Etiquetas con fondo blanco para legibilidad */}
+        {entries.map(([name, val], i) => {
+          const a      = angle(i)
+          const labelR = r + 34
+          const lx     = cx + labelR * Math.cos(a)
+          const ly     = cy + labelR * Math.sin(a)
+          const anchor = Math.cos(a) < -0.1 ? 'end' : Math.cos(a) > 0.1 ? 'start' : 'middle'
+          // Línea corta desde el borde del polígono hasta la etiqueta
+          const [ex, ey] = pt(i, 100)
+          const shortR   = r + 10
+          const sx       = cx + shortR * Math.cos(a)
+          const sy       = cy + shortR * Math.sin(a)
+          const col      = scoreColor(val)
+          const shortName = name.length > 18 ? name.slice(0, 17) + '…' : name
+
+          return (
+            <g key={i}>
+              <line x1={ex.toFixed(1)} y1={ey.toFixed(1)} x2={lx.toFixed(1)} y2={ly.toFixed(1)}
+                stroke={C.borderHi} strokeWidth="1" strokeDasharray="2,2" />
+              {/* Fondo para el texto */}
+              <rect
+                x={anchor === 'end' ? lx - 90 : anchor === 'start' ? lx : lx - 45}
+                y={ly - 14}
+                width={90} height={28}
+                rx={4} fill={C.surface} opacity=".88"
+              />
+              <text x={lx} y={ly - 2} textAnchor={anchor}
+                fontSize="9" fontFamily="'DM Mono',monospace"
+                fill={C.muted} fontWeight="500">{shortName}</text>
+              <text x={lx} y={ly + 11} textAnchor={anchor}
+                fontSize="11" fontFamily="'DM Mono',monospace"
+                fill={col} fontWeight="700">{val}</text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
   )
 }
 
@@ -1302,11 +1369,22 @@ function CandidateCard({ candidate: c, idx }) {
             {/* Tabla de contraste perfil vs candidato — solo modo profile */}
             {c.matchDetail && <MatchDetailTable matchDetail={c.matchDetail} />}
             {c.competencyContrast?.length > 0 && <CompetencyContrastTable competencyContrast={c.competencyContrast} />}
-          </div>
+          {/* Radar competencial — bloque propio debajo de todo el contenido */}
           {c.competencies && Object.keys(c.competencies).length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700 }}>Radar Competencial</div>
-              <RadarChart competencies={c.competencies} color={C.accent} size={220} />
+            <div style={{
+              marginTop: 20,
+              padding: '16px 20px',
+              background: C.bgAlt,
+              borderRadius: 10,
+              border: `1px solid ${C.border}`,
+            }}>
+              <div style={{
+                fontSize: 9, color: C.dim, textTransform: 'uppercase',
+                letterSpacing: '.12em', fontWeight: 700, marginBottom: 12, textAlign: 'center',
+              }}>
+                Radar Competencial
+              </div>
+              <RadarChart competencies={c.competencies} color={C.navy} />
             </div>
           )}
         </div>
@@ -1400,7 +1478,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
 
       {/* RADARES */}
       {tab === 'radars' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 14 }}>
           {matrix.map((row, i) => {
             const comps = row.f?.competencies || row.co?.competencies
             if (!comps) return (
@@ -1409,18 +1487,16 @@ function ComparativePanel({ compareResults, onExportCSV }) {
                 <div style={{ fontSize: 12, color: C.dim }}>Sin datos de competencias</div>
               </div>
             )
-            const colors = [C.gold, C.accent, C.green, C.purple]
+            const radarColor = i % 2 === 0 ? C.navy : C.accent
             const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
             return (
-              <div key={i} className="panel" style={{ padding: '18px', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{row.name}</div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+              <div key={i} className="panel" style={{ padding: '18px' }}>
+                <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{row.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
                   {reco && <RecoBadge reco={reco} />}
-                  <span style={{ fontFamily: "'DM Mono'", color: scoreColor(row.avg), fontWeight: 700, fontSize: 13 }}>AVG: {row.avg}</span>
+                  <span style={{ fontFamily: "'DM Mono'", color: scoreColor(row.avg), fontWeight: 700, fontSize: 13 }}>AVG {row.avg}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <RadarChart competencies={comps} color={colors[i % colors.length]} size={225} />
-                </div>
+                <RadarChart competencies={comps} color={radarColor} />
               </div>
             )
           })}
