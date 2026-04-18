@@ -1217,23 +1217,46 @@ export default function App() {
   async function callAnalyze(modeId, cvList) {
     const modeLabel = MODES.find(m=>m.id===modeId)?.label
     let userPrompt = ''
-    if (modeId==='profile' && profileData) {
-      userPrompt += `CUADRO RESUMEN DEL CARGO:\n${JSON.stringify(profileData,null,2)}\n\nPERFIL (${jobFile.name}):\n${jobFile.content.slice(0,1200)}\n\n`
-    } else if (modeId==='competencies' && competencyDict) {
-      userPrompt += `DICCIONARIO DE COMPETENCIAS:\n${JSON.stringify(competencyDict,null,2)}\n\nPERFIL (${jobFile.name}):\n${jobFile.content.slice(0,1200)}\n\n`
-    } else if (modeId==='full') {
-      if (profileData)      userPrompt += `CUADRO RESUMEN:\n${JSON.stringify(profileData,null,2)}\n\n`
-      if (competencyDict)   userPrompt += `DICCIONARIO COMPETENCIAS:\n${JSON.stringify(competencyDict,null,2)}\n\n`
-      userPrompt += `PERFIL (${jobFile.name}):\n${jobFile.content.slice(0,1000)}\n\n`
-    } else {
-      userPrompt += `PERFIL (${jobFile.name}):\n${jobFile.content.slice(0,1200)}\n\n`
-    }
-    // Limitar texto de CVs según modo — 360° necesita más tokens para respuesta, menos para input
-    const cvMaxChars = modeId==='full' ? 900 : 1200
-    cvList.forEach((cv,i)=>{ userPrompt+=`--- CV ${i+1}: ${cv.name} ---\n${cv.content.slice(0,cvMaxChars)}\n\n` })
 
-    // max_tokens dinámico: full necesita más para generar matchDetail + competencyContrast + executiveSummary
-    const maxTokens = modeId==='full' ? 2800 : modeId==='compare' ? 2000 : 1600
+    // Serializar datos de referencia en forma compacta (sin pretty-print) para reducir tokens de entrada
+    const compactProfile = profileData ? JSON.stringify({
+      cargo: profileData.nombreCargo,
+      estudios: profileData.estudios?.nivelRequerido,
+      carreras: profileData.estudios?.carrerasAceptadas?.slice(0,3),
+      expGeneral: profileData.experiencia?.generalAnios,
+      expEspecifica: profileData.experiencia?.especifica?.slice(0,3),
+      competencias: profileData.competencias?.slice(0,5),
+      condiciones: profileData.condicionesEspeciales?.slice(0,3),
+    }) : ''
+
+    const compactDict = competencyDict ? JSON.stringify({
+      cargo: competencyDict.nombreCargo,
+      competencias: (competencyDict.competencias||[]).slice(0,7).map(c=>({
+        nombre: c.nombre,
+        nivel: c.nivelRequerido,
+        tipo: c.tipo,
+        def: c.definicion?.slice(0,80),
+      }))
+    }) : ''
+
+    if (modeId==='profile' && profileData) {
+      userPrompt += `PERFIL CARGO: ${compactProfile}\n\nTEXTO ORIGINAL: ${jobFile.content.slice(0,800)}\n\n`
+    } else if (modeId==='competencies' && competencyDict) {
+      userPrompt += `DICCIONARIO COMPETENCIAS: ${compactDict}\n\nTEXTO ORIGINAL: ${jobFile.content.slice(0,800)}\n\n`
+    } else if (modeId==='full') {
+      if (profileData)    userPrompt += `PERFIL CARGO: ${compactProfile}\n\n`
+      if (competencyDict) userPrompt += `COMPETENCIAS: ${compactDict}\n\n`
+      userPrompt += `TEXTO CARGO: ${jobFile.content.slice(0,600)}\n\n`
+    } else {
+      userPrompt += `PERFIL: ${jobFile.content.slice(0,1000)}\n\n`
+    }
+
+    // Texto de CVs — reducido para modo full que necesita tokens de salida
+    const cvMaxChars = modeId==='full' ? 800 : 1000
+    cvList.forEach((cv,i)=>{ userPrompt+=`CV ${i+1} (${cv.name}):\n${cv.content.slice(0,cvMaxChars)}\n\n` })
+
+    // max_tokens diferenciado — full necesita más salida (3 bloques: matchDetail + competencyContrast + executiveSummary)
+    const maxTokens = { full:3500, compare:2200, competencies:1800, profile:1600 }[modeId] || 1800
 
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
@@ -1246,43 +1269,37 @@ export default function App() {
     })
     if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e?.error?.message||`HTTP ${res.status}`) }
     const data = await res.json()
-    const raw = data.content?.map(b=>b.text||'').join('')||''
-    const clean = raw.replace(/```json[\s\S]*?```|```[\s\S]*?```/g,'').replace(/```/g,'').trim()
 
-    // Parser robusto: intenta múltiples estrategias antes de fallar
+    // Verificar error de Anthropic (ej: max_tokens excedido por el modelo)
+    if (data.error) throw new Error(data.error.message || 'Error en API Anthropic')
+
+    const raw = data.content?.map(b=>b.text||'').join('')||''
+    const clean = raw.replace(/```json[\s\S]*?```|```[\s\S]*?```/g,'').replace(/`/g,'').trim()
+
+    // Parser robusto con 4 estrategias
     const tryParse = (str) => {
-      // 1. Intento directo
+      // 1. Directo
       try { return JSON.parse(str) } catch {}
-      // 2. Buscar objeto JSON principal
-      const m1 = str.match(/\{[\s\S]*\}/)
-      if (m1) { try { return JSON.parse(m1[0]) } catch {} }
-      // 3. Reparar JSON truncado: cerrar arrays/objetos abiertos
-      let repaired = str
-      // Eliminar último elemento incompleto (sin cierre de string)
-      repaired = repaired.replace(/,\s*"[^"]*$/, '')
-      repaired = repaired.replace(/,\s*\{[^}]*$/, '')
-      // Contar y cerrar estructuras abiertas
-      const opens = (repaired.match(/\{/g)||[]).length - (repaired.match(/\}/g)||[]).length
-      const openArr = (repaired.match(/\[/g)||[]).length - (repaired.match(/\]/g)||[]).length
-      for (let i=0; i<Math.max(0,openArr); i++) repaired += ']'
-      for (let i=0; i<Math.max(0,opens); i++) repaired += '}'
-      try { return JSON.parse(repaired) } catch {}
-      // 4. Extraer hasta el último candidato completo válido
-      const lastCandidate = repaired.lastIndexOf('"recommendation"')
-      if (lastCandidate > 50) {
-        const endObj = repaired.indexOf('}', lastCandidate)
-        if (endObj > 0) {
-          const truncated = repaired.slice(0, endObj+1) + ']}'
-          try { return JSON.parse(truncated) } catch {}
-        }
-      }
+      // 2. Extraer objeto JSON principal
+      const m = str.match(/\{[\s\S]*\}/)
+      if (m) { try { return JSON.parse(m[0]) } catch {} }
+      // 3. Reparar truncamiento: cerrar estructuras abiertas
+      let r = str.replace(/,\s*"[^"]*$/, '').replace(/,\s*\{[^}]*$/, '')
+      const oo = (r.match(/\{/g)||[]).length - (r.match(/\}/g)||[]).length
+      const oa = (r.match(/\[/g)||[]).length - (r.match(/\]/g)||[]).length
+      for(let i=0;i<Math.max(0,oa);i++) r+=']'
+      for(let i=0;i<Math.max(0,oo);i++) r+='}'
+      try { return JSON.parse(r) } catch {}
+      // 4. Extraer hasta el último candidato completo
+      const lc = r.lastIndexOf('"recommendation"')
+      if (lc>50) { const e=r.indexOf('}',lc); if(e>0) { try { return JSON.parse(r.slice(0,e+1)+']}') } catch {} } }
       return null
     }
 
     const parsed = tryParse(clean)
-    if (parsed && parsed.candidates) return parsed
+    if (parsed?.candidates) return parsed
     if (parsed) return parsed
-    throw new Error('El análisis 360° generó demasiado texto. Intenta con 1 CV a la vez o usa Análisis de Perfil.')
+    throw new Error(`El análisis ${modeLabel} no pudo completarse. Verifica que el perfil y CV estén bien formateados.`)
   }
 
   const ready       = cvFiles.filter(f=>f.status==='ready')
