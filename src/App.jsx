@@ -390,7 +390,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 /* Layout */
 .app-shell{
   display:grid;
-  grid-template-columns:320px 1fr;
+  grid-template-columns:280px 1fr;
   gap:0;
   min-height:100vh;
   position:relative;z-index:5;
@@ -402,10 +402,10 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 /* Sidebar */
 .sidebar{
   position:sticky;top:57px;height:calc(100vh - 57px);
-  overflow-y:auto;overflow-x:hidden;
+  overflow-y:auto;overflow-x:visible;
   border-right:1px solid ${C.border};
-  padding:22px 18px 40px;
-  display:flex;flex-direction:column;gap:16px;
+  padding:18px 14px 40px;
+  display:flex;flex-direction:column;gap:12px;
   background:${C.surface};
   box-shadow:2px 0 12px rgba(0,0,0,.04);
 }
@@ -453,14 +453,15 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   border-radius:10px;
   overflow:hidden;
   box-shadow:0 1px 4px rgba(0,0,0,.05);
+  width:100%;
 }
 .sidebar-section-hd{
-  padding:11px 14px;
+  padding:9px 12px;
   border-bottom:1px solid ${C.border};
   display:flex;align-items:center;gap:8px;
   background:${C.surface};
 }
-.sidebar-section-bd{padding:14px}
+.sidebar-section-bd{padding:12px}
 
 /* Step badge */
 .step-badge{
@@ -476,7 +477,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 /* Mode button */
 .mode-btn{
   display:flex;align-items:center;justify-content:space-between;
-  padding:10px 11px;
+  padding:8px 10px;
   border-radius:8px;
   cursor:pointer;
   transition:all .18s;
@@ -565,8 +566,9 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 /* Dropzone */
 .drop-zone{
   border:1px dashed ${C.border};border-radius:8px;
-  padding:16px 12px;text-align:center;cursor:pointer;
+  padding:12px 10px;text-align:center;cursor:pointer;
   transition:all .2s;background:transparent;
+  width:100%;box-sizing:border-box;
 }
 .drop-zone:hover,.drop-zone.drag{border-color:${C.accent};background:${C.accentDim}}
 
@@ -862,9 +864,9 @@ function DropZone({ icon, label, hint, multiple, onFiles, inputRef }) {
       <input ref={inputRef} type="file" accept=".txt,.pdf,.docx" multiple={multiple}
         onChange={e => onFiles(e.target.files)}
         style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
-      <div style={{ fontSize: 20, marginBottom: 5, opacity: .6 }}>{icon}</div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{label}</div>
-      <div style={{ fontSize: 10, color: C.dim, marginTop: 3, fontFamily: "'DM Mono'" }}>{hint}</div>
+      <div style={{ fontSize: 18, marginBottom: 3, opacity: .5 }}>{icon}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.navy }}>{label}</div>
+      <div style={{ fontSize: 9, color: C.dim, marginTop: 2, fontFamily: "'DM Mono'" }}>{hint}</div>
     </div>
   )
 }
@@ -1895,7 +1897,7 @@ ${content.slice(0, 4000)}`
           <div style={{ paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
             <div style={{
               fontFamily: "'Syne',sans-serif", fontWeight: 800,
-              fontSize: 22, letterSpacing: '-.03em', lineHeight: 1.1, marginBottom: 6,
+              fontSize: 19, letterSpacing: '-.03em', lineHeight: 1.1, marginBottom: 4,
             }}>
               Motor de<br />
               <span style={{ color: C.accent }}>Selección</span> <span style={{ color: C.navy }}>IA</span>
