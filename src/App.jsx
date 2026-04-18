@@ -390,7 +390,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 /* Layout */
 .app-shell{
   display:grid;
-  grid-template-columns:280px 1fr;
+  grid-template-columns:260px 1fr;
   gap:0;
   min-height:100vh;
   position:relative;z-index:5;
@@ -404,13 +404,16 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   position:sticky;top:57px;height:calc(100vh - 57px);
   overflow-y:auto;overflow-x:hidden;
   border-right:1px solid ${C.border};
-  padding:14px 12px 24px;
-  display:flex;flex-direction:column;gap:10px;
+  padding:10px 10px 16px;
+  display:flex;flex-direction:column;gap:7px;
   background:${C.surface};
-  box-shadow:2px 0 12px rgba(0,0,0,.04);
+  box-shadow:2px 0 8px rgba(0,0,0,.04);
+  scrollbar-width:thin;
+  scrollbar-color:${C.border} transparent;
 }
-.sidebar::-webkit-scrollbar{width:3px}
-.sidebar::-webkit-scrollbar-thumb{background:${C.border};border-radius:2px}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:${C.borderHi};border-radius:4px}
 
 /* Content */
 .content{
@@ -451,25 +454,24 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 .sidebar-section{
   background:${C.card};
   border:1px solid ${C.border};
-  border-radius:10px;
+  border-radius:8px;
   overflow:hidden;
-  box-shadow:0 1px 4px rgba(0,0,0,.05);
   width:100%;
 }
 .sidebar-section-hd{
-  padding:9px 12px;
+  padding:6px 10px;
   border-bottom:1px solid ${C.border};
   display:flex;align-items:center;gap:8px;
   background:${C.surface};
 }
-.sidebar-section-bd{padding:10px}
+.sidebar-section-bd{padding:8px}
 
 /* Step badge */
 .step-badge{
-  width:20px;height:20px;
-  border-radius:5px;
+  width:18px;height:18px;
+  border-radius:4px;
   display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:700;
+  font-size:9px;font-weight:700;
   font-family:'DM Mono',monospace;
   flex-shrink:0;
   color:#fff;
@@ -478,8 +480,8 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 /* Mode button */
 .mode-btn{
   display:flex;align-items:center;justify-content:space-between;
-  padding:8px 10px;
-  border-radius:8px;
+  padding:6px 8px;
+  border-radius:7px;
   cursor:pointer;
   transition:all .18s;
   border:1px solid ${C.border};
@@ -495,7 +497,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 
 /* CTA */
 .cta-btn{
-  width:100%;padding:12px;
+  width:100%;padding:10px;
   border-radius:9px;border:none;
   font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;
   cursor:pointer;transition:all .2s;
@@ -570,7 +572,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   padding:14px 10px;text-align:center;cursor:pointer;
   transition:all .2s;background:${C.bgAlt};
   width:100%;box-sizing:border-box;
-  min-height:72px;display:flex;flex-direction:column;
+  min-height:58px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;
 }
 .drop-zone:hover,.drop-zone.drag{border-color:${C.accent};background:${C.accentDim}}
@@ -867,7 +869,6 @@ function DropZone({ icon, label, hint, multiple, onFiles, inputRef }) {
       <input ref={inputRef} type="file" accept=".txt,.pdf,.docx" multiple={multiple}
         onChange={e => onFiles(e.target.files)}
         style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
-      <div style={{ fontSize: 18, marginBottom: 3, opacity: .5 }}>{icon}</div>
       <div style={{ fontSize: 11, fontWeight: 700, color: C.navy }}>{label}</div>
       <div style={{ fontSize: 9, color: C.dim, marginTop: 2, fontFamily: "'DM Mono'" }}>{hint}</div>
     </div>
@@ -1900,7 +1901,7 @@ ${content.slice(0, 4000)}`
           <div className="sidebar-section">
             <div className="sidebar-section-hd">
               <div className="step-badge" style={{ background: C.navy }}>1</div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Perfil del Puesto</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>Perfil del Puesto</span>
               {jobFile?.status === 'ready' && (
                 <span className="tag" style={{ marginLeft: 'auto', color: C.greenLt, borderColor: `${C.green}35`, background: C.greenDim, fontSize: 9 }}>✓ LISTO</span>
               )}
@@ -1937,7 +1938,7 @@ ${content.slice(0, 4000)}`
           <div className="sidebar-section">
             <div className="sidebar-section-hd">
               <div className="step-badge" style={{ background: C.accent }}>2</div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>CVs Candidatos</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>CVs Candidatos</span>
               {cvFiles.length > 0 && (
                 <span className="tag" style={{ marginLeft: 'auto', color: C.accent, borderColor: `${C.accent}35`, background: C.accentDim, fontSize: 9 }}>{cvFiles.length} CV{cvFiles.length > 1 ? 's' : ''}</span>
               )}
@@ -1945,7 +1946,7 @@ ${content.slice(0, 4000)}`
             <div className="sidebar-section-bd">
               <DropZone icon="👥" label="Subir CVs" hint=".pdf · .docx · .txt · Múltiples" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
               {cvFiles.length > 0 && (
-                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 130, overflowY: 'auto' }}>
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 100, overflowY: 'auto' }}>
                   {cvFiles.map((cv, i) => (
                     <FileItem key={i} name={cv.name} status={cv.status} onRemove={() => setCvFiles(p => p.filter((_, j) => j !== i))} />
                   ))}
@@ -1958,7 +1959,7 @@ ${content.slice(0, 4000)}`
           <div className="sidebar-section">
             <div className="sidebar-section-hd">
               <div className="step-badge" style={{ background: activeMode?.color ?? C.navy }}>3</div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Tipo de Análisis</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>Tipo de Análisis</span>
             </div>
             <div className="sidebar-section-bd" style={{ padding: '8px 10px' }}>
               {MODES.map(m => (
