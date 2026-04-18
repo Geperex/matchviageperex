@@ -1155,7 +1155,9 @@ export default function App() {
     if (data.error) throw new Error(`API: ${data.error.message||JSON.stringify(data.error)}`)
     const raw = data.content?.map(b=>b.text||'').join('')||''
     if (!raw) throw new Error(`Sin respuesta (stop: ${data.stop_reason||'?'})`)
-    const clean = raw.replace(/```json|```/g,'').trim()
+    // Extraer JSON limpio desde respuesta con o sin markdown
+    const mdMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+    const clean = mdMatch ? mdMatch[1].trim() : raw.replace(/```/g,'').trim()
     try { return JSON.parse(clean) }
     catch {
       const m = clean.match(/\{[\s\S]*\}/)
@@ -1289,7 +1291,9 @@ export default function App() {
     const raw = data.content?.map(b=>b.text||'').join('')||''
     if (!raw) throw new Error(`Sin respuesta de la API (stop: ${data.stop_reason||'?'})`)
 
-    const clean = raw.replace(/```json[\s\S]*?```|```[\s\S]*?```/g,'').replace(/`/g,'').trim()
+    // Extraer JSON limpio — el modelo a veces envuelve en ```json ... ```
+    const mdMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+    const clean = mdMatch ? mdMatch[1].trim() : raw.replace(/```/g,'').trim()
 
     // Parser con 4 estrategias
     const tryParse = (str) => {
