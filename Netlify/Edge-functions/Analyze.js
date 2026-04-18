@@ -39,9 +39,9 @@ export default async (request, context) => {
     })
   }
 
-  // Limitar max_tokens para acelerar respuesta
-  if (!body.max_tokens || body.max_tokens > 2000) {
-    body.max_tokens = 2000
+  // Limitar max_tokens para evitar timeouts — el frontend ya envía el valor correcto por modo
+  if (!body.max_tokens || body.max_tokens > 3000) {
+    body.max_tokens = 3000
   }
 
   // Usar streaming de Anthropic para no acumular toda la respuesta en memoria
