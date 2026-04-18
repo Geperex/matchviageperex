@@ -402,14 +402,15 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 /* Sidebar */
 .sidebar{
   position:sticky;top:57px;height:calc(100vh - 57px);
-  overflow-y:auto;overflow-x:visible;
+  overflow-y:auto;overflow-x:hidden;
   border-right:1px solid ${C.border};
-  padding:18px 14px 40px;
-  display:flex;flex-direction:column;gap:12px;
+  padding:14px 12px 24px;
+  display:flex;flex-direction:column;gap:10px;
   background:${C.surface};
   box-shadow:2px 0 12px rgba(0,0,0,.04);
 }
-.sidebar::-webkit-scrollbar{width:0}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:${C.border};border-radius:2px}
 
 /* Content */
 .content{
@@ -461,7 +462,7 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
   display:flex;align-items:center;gap:8px;
   background:${C.surface};
 }
-.sidebar-section-bd{padding:12px}
+.sidebar-section-bd{padding:10px}
 
 /* Step badge */
 .step-badge{
@@ -565,10 +566,12 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 
 /* Dropzone */
 .drop-zone{
-  border:1px dashed ${C.border};border-radius:8px;
-  padding:12px 10px;text-align:center;cursor:pointer;
-  transition:all .2s;background:transparent;
+  border:2px dashed ${C.border};border-radius:8px;
+  padding:14px 10px;text-align:center;cursor:pointer;
+  transition:all .2s;background:${C.bgAlt};
   width:100%;box-sizing:border-box;
+  min-height:72px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
 }
 .drop-zone:hover,.drop-zone.drag{border-color:${C.accent};background:${C.accentDim}}
 
@@ -1893,55 +1896,38 @@ ${content.slice(0, 4000)}`
         {/* ── SIDEBAR ─────────────────────────────────────── */}
         <aside className="sidebar">
 
-          {/* Wordmark */}
-          <div style={{ paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
-            <div style={{
-              fontFamily: "'Syne',sans-serif", fontWeight: 800,
-              fontSize: 19, letterSpacing: '-.03em', lineHeight: 1.1, marginBottom: 4,
-            }}>
-              Motor de<br />
-              <span style={{ color: C.accent }}>Selección</span> <span style={{ color: C.navy }}>IA</span>
-            </div>
-            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, fontWeight: 300 }}>
-              Análisis curricular + competencial con prompts especializados y radar charts.
-            </div>
-          </div>
-
           {/* Step 1 — Perfil */}
           <div className="sidebar-section">
             <div className="sidebar-section-hd">
               <div className="step-badge" style={{ background: C.navy }}>1</div>
               <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Perfil del Puesto</span>
               {jobFile?.status === 'ready' && (
-                <span className="tag" style={{ marginLeft: 'auto', color: C.greenLt, borderColor: `${C.green}35`, background: C.greenDim, fontSize: 9 }}>LISTO</span>
+                <span className="tag" style={{ marginLeft: 'auto', color: C.greenLt, borderColor: `${C.green}35`, background: C.greenDim, fontSize: 9 }}>✓ LISTO</span>
               )}
             </div>
             <div className="sidebar-section-bd">
-              <DropZone icon="📄" label="Subir Perfil" hint=".txt · .pdf · .docx" multiple={false} onFiles={handleJobFiles} inputRef={jobRef} />
-              {jobFile && (
-                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <FileItem name={jobFile.name} status={jobFile.status} onRemove={() => { setJobFile(null); if (jobRef.current) jobRef.current.value = '' }} />
+              {!jobFile ? (
+                <DropZone icon="📄" label="Subir Perfil de Cargo" hint=".pdf · .docx · .txt" multiple={false} onFiles={handleJobFiles} inputRef={jobRef} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <FileItem name={jobFile.name} status={jobFile.status} onRemove={() => { setJobFile(null); setProfileData(null); setCompetencyDict(null); if (jobRef.current) jobRef.current.value = '' }} />
                   {jobFile.status === 'loading' && loadMsg && (
                     <div style={{ fontSize: 10, color: C.amberLt, fontFamily: "'DM Mono'", paddingLeft: 2 }}>↳ {loadMsg}</div>
                   )}
-                </div>
-              )}
-              {(profileLoading || competencyLoading) && (
-                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, animation: 'pulse 1.2s ease infinite' }}>
-                  <div className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, color: C.muted, fontFamily: "'DM Mono'" }}>
-                    {profileLoading ? 'Extrayendo estructura…' : 'Construyendo diccionario…'}
-                  </span>
-                </div>
-              )}
-              {profileData && !profileLoading && (
-                <div style={{ marginTop: 6, fontSize: 10, color: C.greenLt, fontFamily: "'DM Mono'", display: 'flex', alignItems: 'center', gap: 4 }}>
-                  ✓ Perfil estructurado
-                </div>
-              )}
-              {competencyDict && !competencyLoading && (
-                <div style={{ marginTop: 2, fontSize: 10, color: C.tealLt, fontFamily: "'DM Mono'", display: 'flex', alignItems: 'center', gap: 4 }}>
-                  ✓ Diccionario ({competencyDict.competencias?.length ?? '?'} competencias)
+                  {(profileLoading || competencyLoading) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5, flexShrink: 0 }} />
+                      <span style={{ fontSize: 10, color: C.muted, fontFamily: "'DM Mono'" }}>
+                        {profileLoading ? 'Extrayendo estructura…' : 'Construyendo diccionario…'}
+                      </span>
+                    </div>
+                  )}
+                  {profileData && !profileLoading && (
+                    <div style={{ fontSize: 10, color: C.greenLt, fontFamily: "'DM Mono'" }}>✓ Estructura extraída</div>
+                  )}
+                  {competencyDict && !competencyLoading && (
+                    <div style={{ fontSize: 10, color: C.navy, fontFamily: "'DM Mono'" }}>✓ {competencyDict.competencias?.length ?? '?'} competencias</div>
+                  )}
                 </div>
               )}
             </div>
@@ -1953,13 +1939,13 @@ ${content.slice(0, 4000)}`
               <div className="step-badge" style={{ background: C.accent }}>2</div>
               <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>CVs Candidatos</span>
               {cvFiles.length > 0 && (
-                <span className="tag" style={{ marginLeft: 'auto', color: C.goldLt, borderColor: `${C.gold}35`, background: C.goldDim, fontSize: 9 }}>{cvFiles.length} CV{cvFiles.length > 1 ? 's' : ''}</span>
+                <span className="tag" style={{ marginLeft: 'auto', color: C.accent, borderColor: `${C.accent}35`, background: C.accentDim, fontSize: 9 }}>{cvFiles.length} CV{cvFiles.length > 1 ? 's' : ''}</span>
               )}
             </div>
             <div className="sidebar-section-bd">
-              <DropZone icon="👥" label="Subir CVs" hint=".txt · .pdf · .docx · Múltiples" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
+              <DropZone icon="👥" label="Subir CVs" hint=".pdf · .docx · .txt · Múltiples" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
               {cvFiles.length > 0 && (
-                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto' }}>
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 130, overflowY: 'auto' }}>
                   {cvFiles.map((cv, i) => (
                     <FileItem key={i} name={cv.name} status={cv.status} onRemove={() => setCvFiles(p => p.filter((_, j) => j !== i))} />
                   ))}
@@ -1971,10 +1957,10 @@ ${content.slice(0, 4000)}`
           {/* Step 3 — Modo */}
           <div className="sidebar-section">
             <div className="sidebar-section-hd">
-              <div className="step-badge" style={{ background: activeMode?.color ?? C.purple }}>3</div>
+              <div className="step-badge" style={{ background: activeMode?.color ?? C.navy }}>3</div>
               <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Tipo de Análisis</span>
             </div>
-            <div className="sidebar-section-bd" style={{ padding: '10px 12px' }}>
+            <div className="sidebar-section-bd" style={{ padding: '8px 10px' }}>
               {MODES.map(m => (
                 <button key={m.id} className="mode-btn"
                   onClick={() => setMode(m.id)}
@@ -1983,13 +1969,13 @@ ${content.slice(0, 4000)}`
                     borderColor: mode === m.id ? `${m.color}45` : C.border,
                   }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 14, flexShrink: 0 }}>{m.icon}</span>
+                    <span style={{ fontSize: 13, flexShrink: 0 }}>{m.icon}</span>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ color: mode === m.id ? m.color : C.text, fontWeight: 600, fontSize: 12 }}>{m.label}</div>
-                      <div style={{ fontSize: 10, color: C.dim, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.desc}</div>
+                      <div style={{ color: mode === m.id ? m.color : C.text, fontWeight: 600, fontSize: 11 }}>{m.label}</div>
+                      <div style={{ fontSize: 9, color: C.dim, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.desc}</div>
                     </div>
                   </div>
-                  <span className="tag" style={{ color: C.goldLt, borderColor: `${C.gold}30`, background: C.goldDim, marginLeft: 6, flexShrink: 0 }}>
+                  <span className="tag" style={{ color: C.accent, borderColor: `${C.accent}30`, background: C.accentDim, marginLeft: 6, flexShrink: 0, fontSize: 9 }}>
                     {m.cost}cr
                   </span>
                 </button>
@@ -1998,10 +1984,10 @@ ${content.slice(0, 4000)}`
           </div>
 
           {/* CTA */}
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {canAnalyze && !loading && (
-              <div style={{ fontSize: 11, color: C.dim, textAlign: 'center', fontFamily: "'DM Mono'" }}>
-                Costo: <span style={{ color: C.goldLt, fontWeight: 600 }}>{totalCost} créditos</span>
+              <div style={{ fontSize: 10, color: C.dim, textAlign: 'center', fontFamily: "'DM Mono'" }}>
+                Costo: <span style={{ color: C.accent, fontWeight: 600 }}>{totalCost} créditos</span>
               </div>
             )}
             <button
@@ -2010,21 +1996,21 @@ ${content.slice(0, 4000)}`
             >
               {loading ? (
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                  <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
                   Analizando…
                 </span>
               ) : '◈ Iniciar Análisis'}
             </button>
             <button onClick={reset} style={{
-              width: '100%', padding: '8px', borderRadius: 8,
+              width: '100%', padding: '7px', borderRadius: 8,
               border: `1px solid ${C.border}`, background: 'transparent',
               color: C.muted, cursor: 'pointer',
-              fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 500, transition: 'all .15s',
+              fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 500, transition: 'all .15s',
             }}>↺ Nuevo proceso</button>
             {error && (
               <div style={{
                 background: C.redDim, border: `1px solid ${C.red}30`,
-                borderRadius: 8, padding: '9px 11px',
+                borderRadius: 8, padding: '8px 10px',
                 fontSize: 11, color: C.redLt, lineHeight: 1.5,
               }}>⚠ {error}</div>
             )}
