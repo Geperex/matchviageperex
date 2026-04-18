@@ -819,12 +819,12 @@ function CandidateCard({ candidate: c, idx, tab }) {
         </span>
       </div>
 
-      {/* Donut + resumen */}
-      <div className="donut-wrap">
+      {/* Donut + resumen — layout adaptable */}
+      <div className="donut-wrap" style={{ alignItems:'flex-start' }}>
         <DonutChart score={c.score} size={88} />
-        <div className="donut-labels">
+        <div className="donut-labels" style={{ flex:1 }}>
           <div className="donut-score-label">Match Global</div>
-          {c.summary && <div style={{ fontSize:11,color:C.muted,lineHeight:1.5,maxWidth:160 }}>{c.summary}</div>}
+          {c.summary && <div style={{ fontSize:11,color:C.muted,lineHeight:1.6,maxWidth:'none' }}>{c.summary}</div>}
         </div>
       </div>
 
@@ -1527,7 +1527,13 @@ export default function App() {
                 {/* Tab: Resumen Ejecutivo */}
                 {activeTab==='resumen'&&results&&(
                   <>
-                    <div className="candidates-grid">
+                    <div className="candidates-grid" style={{
+                      gridTemplateColumns: candidates.length===1
+                        ? '1fr'
+                        : candidates.length===2
+                          ? '1fr 1fr'
+                          : 'repeat(auto-fill,minmax(300px,1fr))'
+                    }}>
                       {candidates.map((c,i)=><CandidateCard key={i} candidate={c} idx={i} tab={activeTab}/>)}
                     </div>
                     {/* Panel inferior: radar + recomendación */}
@@ -1571,8 +1577,16 @@ export default function App() {
                 {activeTab==='competencias'&&results&&(
                   <div>
                     {profileData&&<ProfileCard profile={profileData}/>}
+                    <div style={{
+                      display:'grid', gap:16,
+                      gridTemplateColumns: candidates.length===1
+                        ? '1fr'
+                        : candidates.length===2
+                          ? '1fr 1fr'
+                          : 'repeat(auto-fill,minmax(340px,1fr))'
+                    }}>
                     {candidates.filter(c=>c.competencies||c.competencyContrast).map((c,i)=>(
-                      <div key={i} className="bp" style={{ marginBottom:16 }}>
+                      <div key={i} className="bp" style={{ marginBottom:0 }}>
                         <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
                           <DonutChart score={c.score} size={48}/>
                           <div>
@@ -1583,12 +1597,21 @@ export default function App() {
                           </div>
                         </div>
                         {c.competencies&&Object.keys(c.competencies).length>0&&(
-                          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,alignItems:'start' }}>
+                          <div style={{
+                            display:'grid',
+                            gridTemplateColumns: candidates.length===1 ? '1fr 1fr' : '1fr',
+                            gap:16, alignItems:'start'
+                          }}>
                             <div>
                               <div style={{ fontSize:9,color:C.dim,textTransform:'uppercase',letterSpacing:'.1em',fontFamily:"'DM Mono'",fontWeight:700,marginBottom:8 }}>Scores por competencia</div>
                               {Object.entries(c.competencies).map(([k,v])=><BarRow key={k} label={k} value={v}/>)}
                             </div>
-                            <RadarChart competencies={c.competencies} color={C.navy}/>
+                            {candidates.length===1&&<RadarChart competencies={c.competencies} color={C.navy}/>}
+                          </div>
+                        )}
+                        {candidates.length>1&&c.competencies&&Object.keys(c.competencies).length>0&&(
+                          <div style={{ marginTop:12 }}>
+                            <RadarChart competencies={c.competencies} color={i===0?C.navy:C.accent}/>
                           </div>
                         )}
                         {c.competencyContrast?.length>0&&(
@@ -1601,7 +1624,7 @@ export default function App() {
                                     <td style={{ fontWeight:600,color:C.navy,fontSize:11 }}>{row.competencia}</td>
                                     <td><span style={{ fontFamily:"'DM Mono'",fontSize:10,color:C.navy,fontWeight:600 }}>● {row.nivelRequerido}</span></td>
                                     <td><span style={{ fontFamily:"'DM Mono'",fontSize:10,color:scoreColor(row.score),fontWeight:600 }}>◎ {row.nivelObservado}</span></td>
-                                    <td style={{ color:C.muted,fontSize:11,maxWidth:200 }}>{row.evidencia}</td>
+                                    <td style={{ color:C.muted,fontSize:11,maxWidth:180 }}>{row.evidencia}</td>
                                     <td><span style={{ fontFamily:"'DM Mono'",fontWeight:700,fontSize:13,color:scoreColor(row.score) }}>{row.score}</span></td>
                                     <td><BrechaBadge val={row.brecha}/></td>
                                   </tr>
@@ -1612,6 +1635,7 @@ export default function App() {
                         )}
                       </div>
                     ))}
+                    </div>
                   </div>
                 )}
 
@@ -1619,7 +1643,16 @@ export default function App() {
                 {activeTab==='detalle'&&results&&(
                   <div>
                     {profileData&&<ProfileCard profile={profileData}/>}
-                    {candidates.map((c,i)=><CandidateCard key={i} candidate={c} idx={i} tab="detalle"/>)}
+                    <div style={{
+                      display:'grid', gap:16,
+                      gridTemplateColumns: candidates.length===1
+                        ? '1fr'
+                        : candidates.length===2
+                          ? '1fr 1fr'
+                          : 'repeat(auto-fill,minmax(300px,1fr))'
+                    }}>
+                      {candidates.map((c,i)=><CandidateCard key={i} candidate={c} idx={i} tab="detalle"/>)}
+                    </div>
                   </div>
                 )}
 
