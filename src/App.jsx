@@ -38,60 +38,11 @@ const C = {
 }
 
 // ─── PROMPTS (sin cambios) ────────────────────────────────────────────────────
-const PROMPT_EXTRACT_PROFILE = `Eres un analista experto en diseño de perfiles de cargo para sectores de alta exigencia en Chile (Minería, Energía, Sector Público). Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
+const PROMPT_EXTRACT_PROFILE = `Extrae la estructura del perfil de cargo. Solo JSON válido, sin markdown:
+{"nombreCargo":"string","area":"string|null","dependencia":"string|null","mision":"string|null","funciones":["string"],"estudios":{"nivelRequerido":"string|null","carrerasAceptadas":["string"],"requisitosAdicionales":"string|null"},"experiencia":{"generalAnios":"string|null","especifica":["string"],"sectoresDeseados":["string"]},"competencias":["string"],"conocimientosTecnicos":["string"],"idiomas":"string|null","condicionesEspeciales":["string"],"remuneracion":"string|null","jornada":"string|null","lugarTrabajo":"string|null"}`
 
-TAREA: Lee el documento de perfil de cargo y extrae su estructura de forma completa y ordenada.
-Si algún campo no está presente en el documento, usa null.
-
-Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
-{
-  "nombreCargo": "Título exacto del cargo",
-  "area": "Área o Gerencia a la que reporta",
-  "dependencia": "Cargo al que reporta directamente",
-  "mision": "Misión o propósito del cargo, tal como aparece en el documento (1-3 oraciones)",
-  "funciones": ["Función principal 1","Función principal 2","Función principal 3"],
-  "estudios": {
-    "nivelRequerido": "Ej: Título profesional universitario",
-    "carrerasAceptadas": ["Carrera 1","Carrera 2"],
-    "requisitosAdicionales": "Ej: Colegiatura vigente"
-  },
-  "experiencia": {
-    "generalAnios": "Ej: 5 años en cargos similares",
-    "especifica": ["Experiencia específica 1","Experiencia específica 2"],
-    "sectoresDeseados": ["Sector 1","Sector 2"]
-  },
-  "competencias": ["Competencia 1","Competencia 2"],
-  "conocimientosTecnicos": ["Software 1","Conocimiento técnico 2"],
-  "idiomas": "Ej: Inglés nivel intermedio",
-  "condicionesEspeciales": ["Ej: Disponibilidad para trabajar en faena"],
-  "remuneracion": null,
-  "jornada": "Jornada completa",
-  "lugarTrabajo": "Ciudad"
-}
-Solo JSON válido.`
-
-const PROMPT_EXTRACT_COMPETENCIES = `Eres un experto en diseño de diccionarios de competencias para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
-
-TAREA: Lee el documento de perfil de cargo y extrae TODAS las competencias requeridas.
-
-Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
-{
-  "nombreCargo": "Título exacto del cargo",
-  "competencias": [
-    {
-      "nombre": "Nombre de la competencia",
-      "tipo": "CONDUCTUAL",
-      "definicion": "Definición de la competencia en el contexto de este cargo (1-2 oraciones)",
-      "nivelRequerido": "ALTO",
-      "indicadores": ["Comportamiento observable 1","Indicador 2"],
-      "fuente": "EXPLICITA"
-    }
-  ]
-}
-tipo: "CONDUCTUAL" | "TECNICA" | "LIDERAZGO" | "GESTION"
-nivelRequerido: "BASICO" | "INTERMEDIO" | "ALTO" | "CRITICO"
-fuente: "EXPLICITA" | "INFERIDA"
-Extrae mínimo 5 y máximo 10 competencias. Solo JSON válido.`
+const PROMPT_EXTRACT_COMPETENCIES = `Extrae las competencias del perfil de cargo (5-8 competencias). Solo JSON válido, sin markdown:
+{"nombreCargo":"string","competencias":[{"nombre":"string","tipo":"CONDUCTUAL|TECNICA|LIDERAZGO|GESTION","definicion":"string","nivelRequerido":"BASICO|INTERMEDIO|ALTO|CRITICO","indicadores":["string"],"fuente":"EXPLICITA|INFERIDA"}]}`
 
 const PROMPTS = {
   profile: `Eres un experto senior en selección de personas para sectores de alta exigencia en Chile (Minería, Energía, Sector Público). Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
@@ -1197,7 +1148,7 @@ export default function App() {
   async function callExtractAPI(systemPrompt, userContent) {
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:3500, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1200, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
@@ -1226,7 +1177,7 @@ export default function App() {
   async function extractProfileStructure(content, fileName) {
     setProfileLoading(true)
     try {
-      const parsed = await callExtractAPI(PROMPT_EXTRACT_PROFILE, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,4000)}`)
+      const parsed = await callExtractAPI(PROMPT_EXTRACT_PROFILE, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,3000)}`)
       setProfileData(parsed)
       notify('✓',`Estructura extraída — ${parsed.nombreCargo||'cargo identificado'}`)
     } catch(e) { notify('⚠',`Perfil: ${e.message}`,'w') }
@@ -1236,7 +1187,7 @@ export default function App() {
   async function extractCompetencyDict(content, fileName) {
     setCompetencyLoading(true)
     try {
-      const parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,4000)}`)
+      const parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,3000)}`)
       setCompetencyDict(parsed)
       notify('✓',`${parsed.competencias?.length||0} competencias identificadas`)
     } catch(e) { notify('⚠',`Competencias: ${e.message}`,'w') }
@@ -1267,20 +1218,20 @@ export default function App() {
     const modeLabel = MODES.find(m=>m.id===modeId)?.label
     let userPrompt = ''
     if (modeId==='profile' && profileData) {
-      userPrompt += `CUADRO RESUMEN ESTRUCTURADO DEL CARGO:\n${JSON.stringify(profileData,null,2)}\n\nPERFIL ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0,2000)}\n\nMODO: ${modeLabel}\n\n`
+      userPrompt += `CUADRO RESUMEN ESTRUCTURADO DEL CARGO:\n${JSON.stringify(profileData,null,2)}\n\nPERFIL ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0,1400)}\n\nMODO: ${modeLabel}\n\n`
     } else if (modeId==='competencies' && competencyDict) {
-      userPrompt += `DICCIONARIO DE COMPETENCIAS:\n${JSON.stringify(competencyDict,null,2)}\n\nPERFIL ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0,2000)}\n\nMODO: ${modeLabel}\n\n`
+      userPrompt += `DICCIONARIO DE COMPETENCIAS:\n${JSON.stringify(competencyDict,null,2)}\n\nPERFIL ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0,1400)}\n\nMODO: ${modeLabel}\n\n`
     } else if (modeId==='full') {
       if (profileData) userPrompt += `BLOQUE 1 — CUADRO RESUMEN:\n${JSON.stringify(profileData,null,2)}\n\n`
       if (competencyDict) userPrompt += `BLOQUE 2 — DICCIONARIO COMPETENCIAS:\n${JSON.stringify(competencyDict,null,2)}\n\n`
-      userPrompt += `PERFIL ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0,2000)}\n\nMODO: ${modeLabel}\n\n`
+      userPrompt += `PERFIL ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0,1400)}\n\nMODO: ${modeLabel}\n\n`
     } else {
-      userPrompt += `PERFIL (${jobFile.name}):\n${jobFile.content.slice(0,2000)}\n\nMODO: ${modeLabel}\n\n`
+      userPrompt += `PERFIL (${jobFile.name}):\n${jobFile.content.slice(0,1400)}\n\nMODO: ${modeLabel}\n\n`
     }
-    cvList.forEach((cv,i)=>{ userPrompt+=`--- CV ${i+1}: ${cv.name} ---\n${cv.content.slice(0,1800)}\n\n` })
+    cvList.forEach((cv,i)=>{ userPrompt+=`--- CV ${i+1}: ${cv.name} ---\n${cv.content.slice(0,1200)}\n\n` })
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:3500, system:PROMPTS[modeId], messages:[{ role:'user', content:userPrompt }] }),
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1800, system:PROMPTS[modeId], messages:[{ role:'user', content:userPrompt }] }),
     })
     if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e?.error?.message||`HTTP ${res.status}`) }
     const data = await res.json()
