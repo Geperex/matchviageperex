@@ -1148,14 +1148,20 @@ export default function App() {
   async function callExtractAPI(systemPrompt, userContent) {
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1200, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
+      body: JSON.stringify({ model:'claude-haiku-4-5', max_tokens:1200, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
+    if (data.error) throw new Error(`API: ${data.error.message||JSON.stringify(data.error)}`)
     const raw = data.content?.map(b=>b.text||'').join('')||''
+    if (!raw) throw new Error(`Sin respuesta (stop: ${data.stop_reason||'?'})`)
     const clean = raw.replace(/```json|```/g,'').trim()
     try { return JSON.parse(clean) }
-    catch { const m=clean.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]); throw new Error('JSON inválido') }
+    catch {
+      const m = clean.match(/\{[\s\S]*\}/)
+      if (m) { try { return JSON.parse(m[0]) } catch {} }
+      throw new Error(`JSON inválido: ${clean.slice(0,80)}`)
+    }
   }
 
   async function handleJobFiles(fileList) {
@@ -1218,7 +1224,10 @@ export default function App() {
     const modeLabel = MODES.find(m=>m.id===modeId)?.label
     let userPrompt = ''
 
-    // Serializar datos de referencia en forma compacta (sin pretty-print) para reducir tokens de entrada
+    // Texto del perfil — siempre disponible
+    const profileText = jobFile?.content?.slice(0, 1000) || ''
+
+    // Datos estructurados compactos (si están disponibles)
     const compactProfile = profileData ? JSON.stringify({
       cargo: profileData.nombreCargo,
       estudios: profileData.estudios?.nivelRequerido,
@@ -1226,80 +1235,85 @@ export default function App() {
       expGeneral: profileData.experiencia?.generalAnios,
       expEspecifica: profileData.experiencia?.especifica?.slice(0,3),
       competencias: profileData.competencias?.slice(0,5),
-      condiciones: profileData.condicionesEspeciales?.slice(0,3),
-    }) : ''
+      condiciones: profileData.condicionesEspeciales?.slice(0,2),
+    }) : null
 
     const compactDict = competencyDict ? JSON.stringify({
       cargo: competencyDict.nombreCargo,
-      competencias: (competencyDict.competencias||[]).slice(0,7).map(c=>({
-        nombre: c.nombre,
-        nivel: c.nivelRequerido,
-        tipo: c.tipo,
-        def: c.definicion?.slice(0,80),
+      competencias: (competencyDict.competencias||[]).slice(0,6).map(c=>({
+        nombre: c.nombre, nivel: c.nivelRequerido, tipo: c.tipo,
       }))
-    }) : ''
+    }) : null
 
-    if (modeId==='profile' && profileData) {
-      userPrompt += `PERFIL CARGO: ${compactProfile}\n\nTEXTO ORIGINAL: ${jobFile.content.slice(0,800)}\n\n`
-    } else if (modeId==='competencies' && competencyDict) {
-      userPrompt += `DICCIONARIO COMPETENCIAS: ${compactDict}\n\nTEXTO ORIGINAL: ${jobFile.content.slice(0,800)}\n\n`
+    // Construir prompt según modo — siempre incluir texto del perfil como fallback
+    if (modeId==='profile') {
+      userPrompt += compactProfile
+        ? `PERFIL ESTRUCTURADO: ${compactProfile}\n\n`
+        : `PERFIL DEL CARGO:\n${profileText}\n\n`
+    } else if (modeId==='competencies') {
+      userPrompt += compactDict
+        ? `DICCIONARIO COMPETENCIAS: ${compactDict}\n\n`
+        : `PERFIL DEL CARGO:\n${profileText}\n\n`
     } else if (modeId==='full') {
-      if (profileData)    userPrompt += `PERFIL CARGO: ${compactProfile}\n\n`
-      if (competencyDict) userPrompt += `COMPETENCIAS: ${compactDict}\n\n`
-      userPrompt += `TEXTO CARGO: ${jobFile.content.slice(0,600)}\n\n`
+      userPrompt += compactProfile ? `PERFIL: ${compactProfile}\n\n` : `TEXTO CARGO:\n${profileText}\n\n`
+      if (compactDict) userPrompt += `COMPETENCIAS: ${compactDict}\n\n`
     } else {
-      userPrompt += `PERFIL: ${jobFile.content.slice(0,1000)}\n\n`
+      userPrompt += `PERFIL:\n${profileText}\n\n`
     }
 
-    // Texto de CVs — reducido para modo full que necesita tokens de salida
+    // CVs — texto reducido según modo
     const cvMaxChars = modeId==='full' ? 800 : 1000
-    cvList.forEach((cv,i)=>{ userPrompt+=`CV ${i+1} (${cv.name}):\n${cv.content.slice(0,cvMaxChars)}\n\n` })
+    cvList.forEach((cv,i)=>{ userPrompt += `CV ${i+1} (${cv.name}):\n${cv.content.slice(0,cvMaxChars)}\n\n` })
 
-    // max_tokens diferenciado — full necesita más salida (3 bloques: matchDetail + competencyContrast + executiveSummary)
+    // max_tokens por modo
     const maxTokens = { full:3500, compare:2200, competencies:1800, profile:1600 }[modeId] || 1800
 
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
+        model:'claude-haiku-4-5',
         max_tokens: maxTokens,
         system: PROMPTS[modeId],
         messages:[{ role:'user', content:userPrompt }]
       }),
     })
-    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e?.error?.message||`HTTP ${res.status}`) }
-    const data = await res.json()
 
-    // Verificar error de Anthropic (ej: max_tokens excedido por el modelo)
-    if (data.error) throw new Error(data.error.message || 'Error en API Anthropic')
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({}))
+      throw new Error(e?.error?.message || `Error HTTP ${res.status}`)
+    }
+
+    const data = await res.json()
+    if (data.error) throw new Error(`API: ${data.error.message || JSON.stringify(data.error)}`)
 
     const raw = data.content?.map(b=>b.text||'').join('')||''
+    if (!raw) throw new Error(`Sin respuesta de la API (stop: ${data.stop_reason||'?'})`)
+
     const clean = raw.replace(/```json[\s\S]*?```|```[\s\S]*?```/g,'').replace(/`/g,'').trim()
 
-    // Parser robusto con 4 estrategias
+    // Parser con 4 estrategias
     const tryParse = (str) => {
-      // 1. Directo
       try { return JSON.parse(str) } catch {}
-      // 2. Extraer objeto JSON principal
       const m = str.match(/\{[\s\S]*\}/)
       if (m) { try { return JSON.parse(m[0]) } catch {} }
-      // 3. Reparar truncamiento: cerrar estructuras abiertas
       let r = str.replace(/,\s*"[^"]*$/, '').replace(/,\s*\{[^}]*$/, '')
       const oo = (r.match(/\{/g)||[]).length - (r.match(/\}/g)||[]).length
       const oa = (r.match(/\[/g)||[]).length - (r.match(/\]/g)||[]).length
       for(let i=0;i<Math.max(0,oa);i++) r+=']'
       for(let i=0;i<Math.max(0,oo);i++) r+='}'
       try { return JSON.parse(r) } catch {}
-      // 4. Extraer hasta el último candidato completo
       const lc = r.lastIndexOf('"recommendation"')
       if (lc>50) { const e=r.indexOf('}',lc); if(e>0) { try { return JSON.parse(r.slice(0,e+1)+']}') } catch {} } }
       return null
     }
 
     const parsed = tryParse(clean)
+    if (parsed?.candidates?.length > 0) return parsed
     if (parsed?.candidates) return parsed
-    if (parsed) return parsed
-    throw new Error(`El análisis ${modeLabel} no pudo completarse. Verifica que el perfil y CV estén bien formateados.`)
+
+    // Mostrar los primeros 200 chars del raw para diagnóstico
+    const preview = raw.slice(0,200).replace(/\n/g,' ')
+    throw new Error(`No se pudo parsear la respuesta. Vista previa: "${preview}"`)
   }
 
   const ready       = cvFiles.filter(f=>f.status==='ready')
