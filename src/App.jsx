@@ -1117,6 +1117,9 @@ export default function App() {
   const [error, setError]                 = useState('')
   const [toast, setToast]                 = useState(null)
   const [modal, setModal]                 = useState(false)
+  // Historial de la sesión — acumula todos los análisis sin borrar los anteriores
+  const [history, setHistory]             = useState([])   // [{id, label, results, compareResults, date, mode}]
+  const [activeHistoryId, setActiveHistoryId] = useState(null)
   const jobRef = useRef(), cvRef = useRef()
 
   const notify = (icon, msg, type='s') => {
@@ -1270,9 +1273,24 @@ export default function App() {
     const raw = data.content?.map(b=>b.text||'').join('')||''
     if (!raw) throw new Error(`Sin respuesta de la API (stop: ${data.stop_reason||'?'})`)
 
-    // Extraer JSON limpio — el modelo a veces envuelve en ```json ... ```
-    const mdMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-    const clean = mdMatch ? mdMatch[1].trim() : raw.replace(/```/g,'').trim()
+    // Extraer JSON limpio — soporta: con backticks, sin backticks, con texto adicional
+    let clean = raw.trim()
+    // 1. Si viene en bloque ```json ... ```
+    const mdMatch = clean.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (mdMatch) {
+      clean = mdMatch[1].trim()
+    } else {
+      // 2. Extraer desde el primer { hasta el último } balanceado
+      const start = clean.indexOf('{')
+      if (start !== -1) {
+        let depth = 0, end = -1
+        for (let i = start; i < clean.length; i++) {
+          if (clean[i] === '{') depth++
+          else if (clean[i] === '}') { depth--; if (depth === 0) { end = i; break } }
+        }
+        if (end !== -1) clean = clean.slice(start, end + 1)
+      }
+    }
 
     // Parser con 4 estrategias
     const tryParse = (str) => {
@@ -1318,6 +1336,12 @@ export default function App() {
     if (credits<totalCost) { notify('⚠',`Necesitas ${totalCost} créditos`,'e'); return }
     setLoading(true); setResults(null); setCompareResults(null)
     try {
+      const hId = Date.now()
+      const hDate = new Date().toLocaleString('es-CL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
+      const modeLabel = MODES.find(m=>m.id===mode)?.label
+      const cvNames = ready.map(c=>c.name.replace(/\.pdf|\.docx|\.txt/i,'').slice(0,20)).join(', ')
+      const hLabel = `${modeLabel} — ${cvNames}`
+
       if (mode==='compare') {
         setLoadMsg('Ejecutando análisis de perfil (1/3)…')
         const pD = await callAnalyze('profile',ready).catch(()=>null)
@@ -1325,13 +1349,19 @@ export default function App() {
         const cD = await callAnalyze('competencies',ready).catch(()=>null)
         setLoadMsg('Ejecutando análisis 360° (3/3)…')
         const fD = await callAnalyze('full',ready).catch(()=>null)
-        setCompareResults({ profile:pD, competencies:cD, full:fD })
+        const newCompare = { profile:pD, competencies:cD, full:fD }
+        setCompareResults(newCompare)
         setActiveTab('comparativa')
+        setHistory(h=>[{ id:hId, label:hLabel, date:hDate, mode, results:null, compareResults:newCompare },...h])
+        setActiveHistoryId(hId)
       } else {
         setLoadMsg(`Analizando ${ready.length} candidato(s)…`)
         const parsed = await callAnalyze(mode, ready)
-        setResults({ candidates:parsed.candidates||[], mode })
+        const newResults = { candidates:parsed.candidates||[], mode }
+        setResults(newResults)
         setActiveTab('resumen')
+        setHistory(h=>[{ id:hId, label:hLabel, date:hDate, mode, results:newResults, compareResults:null },...h])
+        setActiveHistoryId(hId)
       }
       setCredits(c=>c-totalCost)
       notify('✓',`Análisis completado · ${totalCost} créditos`)
@@ -1360,9 +1390,18 @@ export default function App() {
     notify('⬇','CSV exportado')
   }
 
+  function loadFromHistory(item) {
+    setResults(item.results)
+    setCompareResults(item.compareResults)
+    setActiveHistoryId(item.id)
+    setActiveTab(item.mode === 'compare' ? 'comparativa' : 'resumen')
+    notify('↩', `Análisis cargado`)
+  }
+
   function reset() {
     setJobFile(null); setProfileData(null); setCompetencyDict(null); setCvFiles([])
     setResults(null); setCompareResults(null); setError(''); setActiveTab('resumen')
+    setActiveHistoryId(null)
     if (jobRef.current) jobRef.current.value=''
     if (cvRef.current) cvRef.current.value=''
     notify('↺','Reiniciado')
@@ -1490,6 +1529,34 @@ export default function App() {
               <div style={{ marginTop:8,background:'rgba(185,28,28,.15)',border:'1px solid rgba(185,28,28,.3)',borderRadius:8,padding:'8px 10px',fontSize:10,color:'#FCA5A5',lineHeight:1.5 }}>⚠ {error}</div>
             )}
           </div>
+
+          {/* Historial de sesión */}
+          {history.length > 0 && (
+            <div className="sb-section" style={{ padding:'10px 14px' }}>
+              <div style={{ fontSize:9,fontWeight:700,color:C.sidebarMuted,textTransform:'uppercase',letterSpacing:'.08em',fontFamily:"'DM Mono'",marginBottom:8,display:'flex',alignItems:'center',gap:5 }}>
+                🕓 Análisis de esta sesión
+              </div>
+              <div style={{ display:'flex',flexDirection:'column',gap:4,maxHeight:160,overflowY:'auto' }}>
+                {history.map(item=>(
+                  <button key={item.id}
+                    onClick={()=>loadFromHistory(item)}
+                    style={{
+                      width:'100%',textAlign:'left',padding:'7px 9px',
+                      borderRadius:7,border:`1px solid ${activeHistoryId===item.id ? C.accent+'60' : C.sidebarDim}`,
+                      background: activeHistoryId===item.id ? 'rgba(201,133,58,.12)' : 'rgba(255,255,255,.03)',
+                      cursor:'pointer',transition:'all .15s',
+                    }}
+                  >
+                    <div style={{ fontSize:10,fontWeight:600,color:activeHistoryId===item.id ? C.accent : C.sidebarText,
+                      whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>
+                      {item.mode==='compare' ? '⚡' : item.mode==='full' ? '🔬' : item.mode==='competencies' ? '🎯' : '📋'} {item.label}
+                    </div>
+                    <div style={{ fontSize:9,color:C.sidebarMuted,fontFamily:"'DM Mono'",marginTop:2 }}>{item.date}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Security note */}
           <div className="sb-security">
