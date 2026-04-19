@@ -1120,6 +1120,8 @@ export default function App() {
   // Historial de la sesión — acumula todos los análisis sin borrar los anteriores
   const [history, setHistory]             = useState([])   // [{id, label, results, compareResults, date, mode}]
   const [activeHistoryId, setActiveHistoryId] = useState(null)
+  // Opción C: modo inteligente automático vs. personalizado
+  const [showAdvanced, setShowAdvanced]   = useState(false)
   const jobRef = useRef(), cvRef = useRef()
 
   const notify = (icon, msg, type='s') => {
@@ -1319,7 +1321,23 @@ export default function App() {
 
   const ready       = cvFiles.filter(f=>f.status==='ready')
   const currentMode = MODES.find(m=>m.id===mode)
-  const totalCost   = currentMode ? currentMode.cost * ready.length : 0
+
+  // Opción C: modo inteligente — detecta automáticamente el análisis óptimo
+  const smartMode   = ready.length >= 2 ? 'compare' : 'full'
+  const smartLabel  = ready.length >= 2 ? 'Vista Comparativa' : 'Análisis 360° Global'
+  const smartIcon   = ready.length >= 2 ? '⚡' : '🔬'
+  const smartCost   = ready.length >= 2
+    ? (MODES.find(m=>m.id==='compare')?.cost||5) * ready.length
+    : (MODES.find(m=>m.id==='full')?.cost||3) * ready.length
+  const smartDesc   = ready.length >= 2
+    ? `${ready.length} candidatos — ranking + comparativa + radar`
+    : '1 candidato — análisis curricular + competencias + 360°'
+
+  // El modo efectivo depende de si el usuario está en modo avanzado o automático
+  const effectiveMode = showAdvanced ? mode : smartMode
+  const totalCost   = showAdvanced
+    ? (currentMode ? currentMode.cost * ready.length : 0)
+    : smartCost
   const canAnalyze  = jobFile?.status==='ready' && ready.length>0 && !loading
 
   const LOAD_STEPS = {
@@ -1338,11 +1356,12 @@ export default function App() {
     try {
       const hId = Date.now()
       const hDate = new Date().toLocaleString('es-CL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
-      const modeLabel = MODES.find(m=>m.id===mode)?.label
+      const modeToRun = effectiveMode
+      const modeLabel = MODES.find(m=>m.id===modeToRun)?.label
       const cvNames = ready.map(c=>c.name.replace(/\.pdf|\.docx|\.txt/i,'').slice(0,20)).join(', ')
       const hLabel = `${modeLabel} — ${cvNames}`
 
-      if (mode==='compare') {
+      if (modeToRun==='compare') {
         setLoadMsg('Ejecutando análisis de perfil (1/3)…')
         const pD = await callAnalyze('profile',ready).catch(()=>null)
         setLoadMsg('Ejecutando análisis de competencias (2/3)…')
@@ -1352,15 +1371,15 @@ export default function App() {
         const newCompare = { profile:pD, competencies:cD, full:fD }
         setCompareResults(newCompare)
         setActiveTab('comparativa')
-        setHistory(h=>[{ id:hId, label:hLabel, date:hDate, mode, results:null, compareResults:newCompare },...h])
+        setHistory(h=>[{ id:hId, label:hLabel, date:hDate, mode:modeToRun, results:null, compareResults:newCompare },...h])
         setActiveHistoryId(hId)
       } else {
         setLoadMsg(`Analizando ${ready.length} candidato(s)…`)
-        const parsed = await callAnalyze(mode, ready)
-        const newResults = { candidates:parsed.candidates||[], mode }
+        const parsed = await callAnalyze(modeToRun, ready)
+        const newResults = { candidates:parsed.candidates||[], mode:modeToRun }
         setResults(newResults)
         setActiveTab('resumen')
-        setHistory(h=>[{ id:hId, label:hLabel, date:hDate, mode, results:newResults, compareResults:null },...h])
+        setHistory(h=>[{ id:hId, label:hLabel, date:hDate, mode:modeToRun, results:newResults, compareResults:null },...h])
         setActiveHistoryId(hId)
       }
       setCredits(c=>c-totalCost)
@@ -1485,29 +1504,90 @@ export default function App() {
             )}
           </div>
 
-          {/* Step 3 — Tipo análisis */}
-          <div className="sb-section">
-            <div className="sb-section-title">
-              <div className="sb-step navy">3</div>
-              <div>
-                <div className="sb-label">Tipo de Análisis</div>
-                <div className="sb-sublabel">Selecciona el tipo de evaluación</div>
-              </div>
-            </div>
-            {MODES.map(m=>(
-              <div key={m.id} className={`mode-item${mode===m.id?' active':''}`} onClick={()=>setMode(m.id)}>
-                <div className={`mode-radio${mode===m.id?' on':''}`}/>
-                <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ display:'flex',alignItems:'center',gap:5 }}>
-                    <span style={{ fontSize:13 }}>{m.icon}</span>
-                    <span className="mode-label">{m.label}</span>
-                  </div>
-                  <div className="mode-sub">{m.desc}</div>
+          {/* Step 3 — Modo inteligente automático */}
+          {!showAdvanced ? (
+            // ── MODO AUTOMÁTICO (default) ──
+            <div className="sb-section">
+              <div className="sb-section-title">
+                <div className="sb-step navy">3</div>
+                <div>
+                  <div className="sb-label">Análisis</div>
+                  <div className="sb-sublabel">Modo automático activo</div>
                 </div>
-                <span className="mode-cost">{m.cost}cr</span>
               </div>
-            ))}
-          </div>
+              {/* Card del modo detectado */}
+              <div style={{
+                background:'rgba(255,255,255,.05)',
+                border:`1px solid ${C.accent}40`,
+                borderRadius:9, padding:'11px 12px',
+                marginBottom:8,
+              }}>
+                <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:4 }}>
+                  <span style={{ fontSize:16 }}>{smartIcon}</span>
+                  <span style={{ fontSize:12,fontWeight:700,color:C.sidebarText }}>{smartLabel}</span>
+                  <span style={{ marginLeft:'auto',fontFamily:"'DM Mono'",fontSize:10,fontWeight:700,
+                    color:C.accent,background:'rgba(201,133,58,.15)',border:'1px solid rgba(201,133,58,.3)',
+                    borderRadius:100,padding:'2px 8px',flexShrink:0 }}>
+                    {smartCost} cr
+                  </span>
+                </div>
+                <div style={{ fontSize:10,color:C.sidebarMuted,lineHeight:1.5 }}>
+                  {ready.length === 0
+                    ? 'Sube CVs para ver qué análisis se ejecutará'
+                    : smartDesc
+                  }
+                </div>
+                {ready.length > 0 && (
+                  <div style={{ marginTop:8,display:'flex',alignItems:'center',gap:5,
+                    fontSize:9,color:C.greenLt,fontFamily:"'DM Mono'" }}>
+                    <span>✓</span>
+                    {ready.length===1
+                      ? '1 CV detectado → 360° Global'
+                      : `${ready.length} CVs detectados → Vista Comparativa`
+                    }
+                  </div>
+                )}
+              </div>
+              {/* Enlace personalizar */}
+              <button onClick={()=>setShowAdvanced(true)} style={{
+                background:'none',border:'none',cursor:'pointer',
+                fontSize:10,color:C.sidebarMuted,fontFamily:"'DM Sans'",
+                display:'flex',alignItems:'center',gap:4,padding:'2px 0',
+                transition:'color .15s',
+              }}>
+                <span style={{ fontSize:10 }}>⚙</span> Personalizar análisis
+              </button>
+            </div>
+          ) : (
+            // ── MODO AVANZADO (personalizado) ──
+            <div className="sb-section">
+              <div className="sb-section-title">
+                <div className="sb-step navy">3</div>
+                <div>
+                  <div className="sb-label">Tipo de Análisis</div>
+                  <div className="sb-sublabel">Modo personalizado</div>
+                </div>
+                <button onClick={()=>setShowAdvanced(false)} style={{
+                  marginLeft:'auto',background:'none',border:'none',cursor:'pointer',
+                  fontSize:9,color:C.accent,fontFamily:"'DM Mono'",fontWeight:700,
+                  padding:'2px 6px',flexShrink:0,
+                }}>← Auto</button>
+              </div>
+              {MODES.map(m=>(
+                <div key={m.id} className={`mode-item${mode===m.id?' active':''}`} onClick={()=>setMode(m.id)}>
+                  <div className={`mode-radio${mode===m.id?' on':''}`}/>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ display:'flex',alignItems:'center',gap:5 }}>
+                      <span style={{ fontSize:13 }}>{m.icon}</span>
+                      <span className="mode-label">{m.label}</span>
+                    </div>
+                    <div className="mode-sub">{m.desc}</div>
+                  </div>
+                  <span className="mode-cost">{m.cost}cr</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* CTA */}
           <div className="cta-wrap">
@@ -1517,12 +1597,19 @@ export default function App() {
                   <div className="spinner" style={{ width:16,height:16,borderWidth:2,borderColor:'rgba(255,255,255,.3)',borderTopColor:'#fff' }}/>
                   Analizando…
                 </>
+              ) : canAnalyze ? (
+                <>{smartIcon} Analizar {ready.length > 1 ? `${ready.length} Candidatos` : 'Candidato'}</>
               ) : (
                 <>🚀 Analizar Candidatos</>
               )}
             </button>
             {canAnalyze&&!loading&&(
-              <div className="cta-sub">Consumirá {totalCost} créditos</div>
+              <div className="cta-sub">
+                {showAdvanced
+                  ? `Modo: ${MODES.find(m=>m.id===mode)?.label} · ${totalCost} cr`
+                  : `${smartLabel} · ${totalCost} cr`
+                }
+              </div>
             )}
             <button className="reset-btn" onClick={reset}>↺ Nuevo proceso</button>
             {error&&(
