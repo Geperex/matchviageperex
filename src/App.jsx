@@ -45,7 +45,8 @@ const PROMPT_EXTRACT_COMPETENCIES = `Extrae las competencias del perfil de cargo
 {"nombreCargo":"string","competencias":[{"nombre":"string","tipo":"CONDUCTUAL|TECNICA|LIDERAZGO|GESTION","definicion":"string","nivelRequerido":"BASICO|INTERMEDIO|ALTO|CRITICO","indicadores":["string"],"fuente":"EXPLICITA|INFERIDA"}]}`
 
 const PROMPTS = {
-  profile: `Eres un experto senior en selección de personas para sectores de alta exigencia en Chile (Minería, Energía, Sector Público). Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
+  profile: `Eres un experto en selección de personas para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex.
+INSTRUCCIÓN CRÍTICA: Responde SOLO con JSON puro, SIN backticks, SIN markdown, SIN texto antes o después.
 
 MODO: ANÁLISIS DE PERFIL CURRICULAR
 Se te entregará:
@@ -79,9 +80,10 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin ba
 }
 recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR". cumple: "CUMPLE" | "CUMPLE PARCIALMENTE" | "NO CUMPLE". Ordena por score descendente.`,
 
-  competencies: `Eres un experto senior en evaluación de competencias para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
+  competencies: `Eres un experto en evaluación de competencias para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex.
+INSTRUCCIÓN CRÍTICA: Responde SOLO con JSON puro, SIN backticks, SIN markdown, SIN texto antes o después.
 
-MODO: ANÁLISIS DE COMPETENCIAS — FASE 2 (CONTRASTE)
+MODO: ANÁLISIS DE COMPETENCIAS
 Se te entregará:
   1. DICCIONARIO DE COMPETENCIAS del cargo
   2. Uno o más CVs de candidatos
@@ -106,42 +108,19 @@ Responde ÚNICAMENTE con JSON válido:
 }
 recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR". brecha: "SIN BRECHA" | "PARCIAL" | "SIGNIFICATIVA" | "CRITICA". Ordena por score descendente.`,
 
-  full: `Eres un experto senior en selección estratégica de personas para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
+  full: `Eres un experto en selección de personas para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
 
-MODO: ANÁLISIS 360° GLOBAL — INTEGRACIÓN TOTAL
-BLOQUE 1: Análisis curricular con matchDetail y scoreBreakdown.
-BLOQUE 2: Análisis competencial con competencyContrast.
-score = (scoreProfile * 0.60) + (scoreCompetencies * 0.40)
+INSTRUCCIÓN CRÍTICA: Responde SOLO con el JSON puro, SIN backticks, SIN markdown, SIN texto antes o después.
 
-Responde ÚNICAMENTE con JSON válido:
-{
-  "candidates": [
-    {
-      "name": "Nombre completo",
-      "fileName": "archivo.pdf",
-      "score": 85,"scoreProfile": 83,"scoreCompetencies": 88,
-      "recommendation": "CONTRATAR",
-      "executiveSummary": "Párrafo ejecutivo 4-5 oraciones",
-      "summary": "Síntesis 2 oraciones",
-      "strengths": ["fortaleza 1","fortaleza 2","fortaleza 3"],
-      "gaps": ["brecha 1","brecha 2"],
-      "riskFactors": ["factor de riesgo"],
-      "matchDetail": {
-        "formacion": {"requerido": "texto","candidato": "texto","cumple": "CUMPLE"},
-        "experienciaGeneral": {"requerido": "texto","candidato": "texto","cumple": "CUMPLE"},
-        "experienciaEspecifica": {"requerido": "texto","candidato": "texto","cumple": "NO CUMPLE"},
-        "formacionComplementaria": {"requerido": "texto","candidato": "texto","cumple": "CUMPLE"},
-        "condicionesEspeciales": {"requerido": "texto","candidato": "texto","cumple": "CUMPLE"}
-      },
-      "scoreBreakdown": {"Formación Académica": 80,"Experiencia General": 85,"Experiencia Específica": 75,"Formación Complementaria": 70,"Condiciones Especiales": 90},
-      "competencies": {"NombreCompetencia1": 90},
-      "competencyContrast": [
-        {"competencia": "nombre","nivelRequerido": "ALTO","nivelObservado": "INTERMEDIO","score": 68,"evidencia": "texto","brecha": "PARCIAL"}
-      ]
-    }
-  ]
-}
-recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR". Ordena por score descendente.`
+MODO: ANÁLISIS 360° — genera para cada candidato:
+- score = (scoreProfile*0.60)+(scoreCompetencies*0.40)
+- matchDetail: 5 criterios (formacion, experienciaGeneral, experienciaEspecifica, formacionComplementaria, condicionesEspeciales), cada uno con requerido/candidato/cumple
+- competencyContrast: una entrada por competencia del diccionario, con evidencia breve
+- executiveSummary: 2-3 oraciones máximo
+
+Formato JSON exacto (sin texto adicional):
+{"candidates":[{"name":"string","fileName":"string","score":0,"scoreProfile":0,"scoreCompetencies":0,"recommendation":"CONTRATAR","executiveSummary":"string","summary":"string","strengths":["string"],"gaps":["string"],"riskFactors":["string"],"matchDetail":{"formacion":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaGeneral":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaEspecifica":{"requerido":"string","candidato":"string","cumple":"NO CUMPLE"},"formacionComplementaria":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"condicionesEspeciales":{"requerido":"string","candidato":"string","cumple":"CUMPLE"}},"scoreBreakdown":{"Formación Académica":0,"Experiencia General":0,"Experiencia Específica":0,"Formación Complementaria":0,"Condiciones Especiales":0},"competencies":{"NombreComp":0},"competencyContrast":[{"competencia":"string","nivelRequerido":"ALTO","nivelObservado":"INTERMEDIO","score":0,"evidencia":"string","brecha":"PARCIAL"}]}]}
+recommendation: "CONTRATAR"|"RESERVA"|"NO RECOMENDAR". cumple: "CUMPLE"|"CUMPLE PARCIALMENTE"|"NO CUMPLE". brecha: "SIN BRECHA"|"PARCIAL"|"SIGNIFICATIVA"|"CRITICA". Ordena por score desc.`
 }
 
 const MODES = [
@@ -1148,7 +1127,7 @@ export default function App() {
   async function callExtractAPI(systemPrompt, userContent) {
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ model:'claude-haiku-4-5', max_tokens:1200, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1200, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
@@ -1273,7 +1252,7 @@ export default function App() {
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({
-        model:'claude-haiku-4-5',
+        model:'claude-sonnet-4-6',
         max_tokens: maxTokens,
         system: PROMPTS[modeId],
         messages:[{ role:'user', content:userPrompt }]
