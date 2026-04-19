@@ -1523,11 +1523,26 @@ export default function App() {
                 {TABS.filter(t=>{
                   if (t.id==='comparativa') return !!compareResults
                   return true
-                }).map(t=>(
-                  <button key={t.id} className={`tab-btn${activeTab===t.id?' active':''}`} onClick={()=>setActiveTab(t.id)}>
-                    {t.label}
-                  </button>
-                ))}
+                }).map(t=>{
+                  // Tab sin contenido individual (solo compareResults disponible)
+                  const isUnavailable = !results && compareResults && t.id !== 'comparativa'
+                  return (
+                    <button key={t.id}
+                      className={`tab-btn${activeTab===t.id?' active':''}`}
+                      onClick={()=>setActiveTab(t.id)}
+                      style={{ opacity: isUnavailable ? 0.45 : 1, position:'relative' }}
+                      title={isUnavailable ? 'Disponible con análisis individual' : ''}
+                    >
+                      {t.label}
+                      {isUnavailable && (
+                        <span style={{
+                          marginLeft:5, fontSize:8, fontFamily:"'DM Mono'",
+                          color:C.dim, verticalAlign:'middle',
+                        }}>—</span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
               <div style={{ display:'flex',gap:8,flexShrink:0 }}>
                 <button className="export-btn">📄 Exportar PDF</button>
@@ -1572,6 +1587,69 @@ export default function App() {
                       </div>
                     </div>
                     <div className="banner-badge">IA + Criterio Experto</div>
+                  </div>
+                )}
+
+                {/* ── ESTADOS INFORMATIVOS: tabs sin contenido cuando solo hay Vista Comparativa ── */}
+                {!results && compareResults && activeTab !== 'comparativa' && (
+                  <div style={{
+                    display:'flex', flexDirection:'column', alignItems:'center',
+                    justifyContent:'center', minHeight:'50vh', textAlign:'center', padding:'0 32px'
+                  }}>
+                    {/* Icono según tab */}
+                    <div style={{
+                      width:72, height:72, borderRadius:16,
+                      background: activeTab==='resumen' ? C.accentDim : activeTab==='competencias' ? `rgba(27,42,74,.08)` : `rgba(26,122,69,.08)`,
+                      border:`1px solid ${activeTab==='resumen' ? C.accent+'30' : activeTab==='competencias' ? C.navy+'20' : C.green+'25'}`,
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:30, marginBottom:20,
+                    }}>
+                      {activeTab==='resumen' ? '📋' : activeTab==='competencias' ? '🎯' : '🔍'}
+                    </div>
+
+                    <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:18, color:C.navy, marginBottom:8 }}>
+                      {activeTab==='resumen'  && 'Vista de Resumen no disponible'}
+                      {activeTab==='competencias' && 'Vista de Competencias no disponible'}
+                      {activeTab==='detalle'  && 'Vista de Detalle no disponible'}
+                    </div>
+
+                    <div style={{ color:C.muted, fontSize:13, maxWidth:380, lineHeight:1.7, marginBottom:24 }}>
+                      {activeTab==='resumen' && (
+                        <>
+                          Ejecutaste una <strong style={{ color:C.navy }}>Vista Comparativa</strong>, que analiza los 3 modos en paralelo. Para ver el resumen individual de candidatos, ejecuta un análisis de tipo <strong style={{ color:C.accent }}>Análisis de Perfil</strong>, <strong style={{ color:C.accent }}>Competencias</strong> o <strong style={{ color:C.accent }}>360° Global</strong>.
+                        </>
+                      )}
+                      {activeTab==='competencias' && (
+                        <>
+                          Esta vista muestra el detalle competencial de análisis individuales. Para acceder a ella, ejecuta un análisis de tipo <strong style={{ color:C.accent }}>Análisis Competencias</strong> o <strong style={{ color:C.accent }}>360° Global</strong>.
+                        </>
+                      )}
+                      {activeTab==='detalle' && (
+                        <>
+                          Esta vista muestra el detalle curricular completo de cada candidato. Para acceder, ejecuta un análisis de tipo <strong style={{ color:C.accent }}>Análisis de Perfil</strong> o <strong style={{ color:C.accent }}>360° Global</strong>.
+                        </>
+                      )}
+                    </div>
+
+                    {/* Botón para ir a comparativa */}
+                    <button
+                      onClick={()=>setActiveTab('comparativa')}
+                      style={{
+                        padding:'10px 24px', borderRadius:9,
+                        background:C.navy, color:'#fff', border:'none',
+                        fontFamily:"'DM Sans'", fontWeight:700, fontSize:13,
+                        cursor:'pointer', transition:'all .2s',
+                        boxShadow:`0 4px 16px rgba(27,42,74,.25)`,
+                        display:'flex', alignItems:'center', gap:8,
+                      }}
+                    >
+                      ⚡ Ver Vista Comparativa
+                    </button>
+
+                    {/* Sugerencia secundaria */}
+                    <div style={{ marginTop:16, fontSize:11, color:C.dim, fontFamily:"'DM Mono'" }}>
+                      O selecciona otro tipo de análisis en el panel izquierdo y presiona Analizar
+                    </div>
                   </div>
                 )}
 
