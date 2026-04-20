@@ -1,51 +1,87 @@
 import { useState, useRef } from 'react'
 import { extractText } from './extractor.js'
 
-// ─── PALETA GEPEREX ───────────────────────────────────────────────────────────
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
-  // Sidebar
-  sidebarBg:   '#1B2A4A',
-  sidebarBd:   '#243660',
-  sidebarText: '#E8EDF5',
-  sidebarMuted:'#8A9BBF',
-  sidebarDim:  '#3D527A',
-  // Content
-  bg:          '#F4F6F9',
-  surface:     '#FFFFFF',
-  border:      '#E2E6ED',
-  borderHi:    '#C5CDD8',
-  // Brand
-  navy:        '#1B2A4A',
-  navyLt:      '#243660',
-  accent:      '#C9853A',
-  accentLt:    '#DFA05A',
-  accentDim:   'rgba(201,133,58,0.12)',
-  orange:      '#E8671A',  // CTA button
-  // Semáforos
-  green:       '#1A7A45',
-  greenLt:     '#22A05A',
-  greenDim:    'rgba(26,122,69,0.10)',
-  red:         '#B91C1C',
-  redLt:       '#DC2626',
-  redDim:      'rgba(185,28,28,0.10)',
-  amber:       '#92600A',
-  amberLt:     '#B8860B',
-  amberDim:    'rgba(146,96,10,0.10)',
-  // Texto
-  text:        '#111827',
-  muted:       '#4B5563',
-  dim:         '#9CA3AF',
+  navy:       '#1B2A4A',
+  navyLt:     '#243860',
+  sidebarBg:  '#1B2A4A',
+  sidebarText:'#E8EDF5',
+  sidebarMuted:'#7A8BAA',
+  sidebarDim: 'rgba(255,255,255,0.08)',
+  accent:     '#C9853A',
+  accentDim:  'rgba(201,133,58,0.12)',
+  orange:     '#E8671A',
+  bg:         '#F5F6F8',
+  surface:    '#FFFFFF',
+  border:     '#E5E7EB',
+  borderHi:   '#D1D5DB',
+  text:       '#111827',
+  muted:      '#4B5563',
+  dim:        '#9CA3AF',
+  green:      '#16A34A',
+  greenLt:    '#22C55E',
+  greenDim:   'rgba(22,163,74,0.10)',
+  red:        '#B91C1C',
+  redLt:      '#DC2626',
+  redDim:     'rgba(185,28,28,0.10)',
+  amber:      '#92600A',
+  amberLt:    '#B8860B',
+  amberDim:   'rgba(146,96,10,0.10)',
 }
 
-// ─── PROMPTS (sin cambios) ────────────────────────────────────────────────────
-const PROMPT_EXTRACT_PROFILE = `Extrae la estructura del perfil de cargo. IMPORTANTE para el campo "competencias": busca en TODO el documento cualquier lista de competencias, habilidades o capacidades requeridas. Pueden aparecer bajo títulos como "Competencias", "Habilidades", "Capacidades", "Perfil conductual", o como ítems numerados/codificados (C1, 1., a), etc.). Extrae SOLO el nombre de cada competencia, sin definición ni descripción. Si no encuentras ninguna, usa [].
-Solo JSON válido, sin markdown, sin backticks:
-{"nombreCargo":"string","area":"string|null","dependencia":"string|null","mision":"string|null","funciones":["string"],"estudios":{"nivelRequerido":"string|null","carrerasAceptadas":["string"],"requisitosAdicionales":"string|null"},"experiencia":{"generalAnios":"string|null","especifica":["string"],"sectoresDeseados":["string"]},"competencias":["string"],"conocimientosTecnicos":["string"],"idiomas":"string|null","condicionesEspeciales":["string"],"remuneracion":"string|null","jornada":"string|null","lugarTrabajo":"string|null"}`
+// ─── PROMPT: EXTRACCIÓN ESTRUCTURADA DEL PERFIL (Fase 1) ─────────────────────
+const PROMPT_EXTRACT_PROFILE = `Eres un analista experto en diseño de perfiles de cargo para sectores de alta exigencia en Chile (Minería, Energía, Sector Público). Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
 
+TAREA: Lee el documento de perfil de cargo y extrae su estructura de forma completa y ordenada.
+Si algún campo no está presente en el documento, usa null.
 
+Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
+{
+  "nombreCargo": "Título exacto del cargo",
+  "area": "Área o Gerencia a la que reporta",
+  "dependencia": "Cargo al que reporta directamente",
+  "mision": "Misión o propósito del cargo, tal como aparece en el documento (1-3 oraciones)",
+  "funciones": [
+    "Función principal 1",
+    "Función principal 2",
+    "Función principal 3"
+  ],
+  "estudios": {
+    "nivelRequerido": "Ej: Título profesional universitario / Técnico nivel superior / Enseñanza Media",
+    "carrerasAceptadas": ["Carrera 1", "Carrera 2"],
+    "requisitosAdicionales": "Ej: Colegiatura vigente, habilitación profesional, etc."
+  },
+  "experiencia": {
+    "generalAnios": "Ej: 5 años en cargos similares",
+    "especifica": [
+      "Experiencia específica requerida 1",
+      "Experiencia específica requerida 2"
+    ],
+    "sectoresDeseados": ["Sector 1", "Sector 2"]
+  },
+  "competencias": [
+    "Competencia o habilidad clave 1",
+    "Competencia o habilidad clave 2"
+  ],
+  "conocimientosTecnicos": [
+    "Software/sistema/herramienta 1",
+    "Conocimiento técnico 2"
+  ],
+  "idiomas": "Ej: Inglés nivel intermedio / No requerido",
+  "condicionesEspeciales": [
+    "Ej: Disponibilidad para trabajar en faena",
+    "Ej: Licencia clase B vigente"
+  ],
+  "remuneracion": "Si está especificada, indicarla; si no, null",
+  "jornada": "Ej: Jornada completa / Turno 7x7 / Part-time",
+  "lugarTrabajo": "Ciudad o lugar físico del trabajo"
+}
+Solo JSON válido. Si un campo no existe en el documento, usa null o array vacío según corresponda.`
+
+// ─── SYSTEM PROMPTS DIFERENCIADOS ─────────────────────────────────────────────
 const PROMPTS = {
-  profile: `Eres un experto en selección de personas para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex.
-INSTRUCCIÓN CRÍTICA: Responde SOLO con JSON puro, SIN backticks, SIN markdown, SIN texto antes o después.
+  profile: `Eres un experto senior en selección de personas para sectores de alta exigencia en Chile (Minería, Energía, Sector Público). Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
 
 MODO: ANÁLISIS DE PERFIL CURRICULAR
 Se te entregará:
@@ -53,741 +89,550 @@ Se te entregará:
   2. Uno o más CVs de candidatos
 
 Tu tarea es contrastar CADA CV contra los requisitos del cuadro resumen y generar una evaluación detallada.
-Criterios de scoring ponderado: Formación académica 30% · Experiencia general 25% · Experiencia específica 25% · Formación complementaria 10% · Condiciones especiales 10%.
+
+Criterios de scoring ponderado (usa los requisitos del cuadro como referencia explícita):
+  - Formación académica (título, carrera, nivel): 30%
+  - Años de experiencia general en el área: 25%
+  - Experiencia específica requerida por el cargo: 25%
+  - Formación complementaria / certificaciones: 10%
+  - Condiciones especiales / conocimientos técnicos: 10%
+
+Para cada criterio, indica en matchDetail si el candidato CUMPLE, CUMPLE PARCIALMENTE o NO CUMPLE el requisito específico del perfil.
 
 Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
 {
   "candidates": [
     {
-      "name": "Nombre completo del candidato",
+      "name": "Nombre completo del candidato (extráelo del CV; si no aparece, usa nombre del archivo sin extensión)",
       "fileName": "archivo.pdf",
       "score": 85,
       "recommendation": "CONTRATAR",
-      "summary": "Análisis de 2-3 oraciones sobre compatibilidad curricular con el cargo",
-      "strengths": ["fortaleza 1","fortaleza 2","fortaleza 3"],
-      "gaps": ["brecha 1","brecha 2"],
+      "summary": "Análisis de 2-3 oraciones sobre compatibilidad curricular con el cargo, mencionando elementos concretos del perfil",
+      "strengths": ["fortaleza concreta vs. requisito del cargo 1", "fortaleza 2", "fortaleza 3"],
+      "gaps": ["brecha concreta vs. requisito del cargo 1", "brecha 2"],
       "matchDetail": {
-        "formacion": {"requerido": "texto","candidato": "texto","cumple": "CUMPLE"},
-        "experienciaGeneral": {"requerido": "texto","candidato": "texto","cumple": "CUMPLE PARCIALMENTE"},
-        "experienciaEspecifica": {"requerido": "texto","candidato": "texto","cumple": "NO CUMPLE"},
-        "formacionComplementaria": {"requerido": "texto","candidato": "texto","cumple": "CUMPLE"},
-        "condicionesEspeciales": {"requerido": "texto","candidato": "texto","cumple": "CUMPLE"}
+        "formacion": {
+          "requerido": "Lo que pide el perfil en formación",
+          "candidato": "Lo que tiene el candidato",
+          "cumple": "CUMPLE"
+        },
+        "experienciaGeneral": {
+          "requerido": "Años/tipo de experiencia requerida",
+          "candidato": "Años/tipo que tiene el candidato",
+          "cumple": "CUMPLE PARCIALMENTE"
+        },
+        "experienciaEspecifica": {
+          "requerido": "Experiencia específica del perfil",
+          "candidato": "Experiencia específica del candidato",
+          "cumple": "NO CUMPLE"
+        },
+        "formacionComplementaria": {
+          "requerido": "Certificaciones/cursos del perfil",
+          "candidato": "Certificaciones/cursos del candidato",
+          "cumple": "CUMPLE"
+        },
+        "condicionesEspeciales": {
+          "requerido": "Condiciones especiales del perfil",
+          "candidato": "Si el candidato las cumple o no",
+          "cumple": "CUMPLE"
+        }
       },
-      "scoreBreakdown": {"Formación Académica": 80,"Experiencia General": 90,"Experiencia Específica": 75,"Formación Complementaria": 70,"Condiciones Especiales": 85}
+      "scoreBreakdown": {
+        "Formación Académica": 80,
+        "Experiencia General": 90,
+        "Experiencia Específica": 75,
+        "Formación Complementaria": 70,
+        "Condiciones Especiales": 85
+      }
     }
   ]
 }
-recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR". cumple: "CUMPLE" | "CUMPLE PARCIALMENTE" | "NO CUMPLE". Ordena por score descendente.`,
+recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR"
+cumple: "CUMPLE" | "CUMPLE PARCIALMENTE" | "NO CUMPLE"
+score y scoreBreakdown de 0 a 100. Ordena por score descendente. Solo JSON válido.`,
 
+None
 }
 
+// ─── MODOS ────────────────────────────────────────────────────────────────────
 const MODES = [
-  { id: 'profile', label: 'Análisis de Perfil', icon: '📋', cost: 2,
-    desc: 'Compatibilidad curricular',
-    tooltip: 'Contrasta el CV contra los requisitos formales del cargo: formación, experiencia, certificaciones y condiciones especiales.' },
-  { id: 'compare', label: 'Vista Comparativa',  icon: '⚡', cost: 2,
-    desc: 'Ranking entre candidatos',
-    tooltip: 'Analiza todos los CVs contra el perfil y los rankea en una tabla comparativa. Ideal para decidir entre 2 o más candidatos.' },
+  { id: 'profile', label: 'Análisis de Perfil', icon: '📋', cost: 2, color: C.navy,
+    desc: 'Compatibilidad curricular vs. cargo',
+    tooltip: 'Contrasta el CV contra los requisitos formales: formación, experiencia y condiciones.' },
+  { id: 'compare', label: 'Vista Comparativa',  icon: '⚡', cost: 2, color: C.accent,
+    desc: 'Ranking curricular entre candidatos',
+    tooltip: 'Analiza todos los CVs y los rankea en una tabla comparativa. Ideal para 2 o más candidatos.' },
 ]
 
-const TABS = [
-  { id: 'resumen',     label: 'Resumen Ejecutivo' },
-  { id: 'detalle',     label: 'Detalle Curricular' },
-  { id: 'comparativa', label: 'Análisis Comparativo' },
-]
-
-const RECO = {
-  'CONTRATAR':     { color: C.green,   bg: C.greenDim,  border: C.greenLt,  label: 'RECOMENDADO',    dot: '#22A05A' },
-  'RESERVA':       { color: C.amber,   bg: C.amberDim,  border: C.amberLt,  label: 'EN RESERVA',     dot: '#B8860B' },
-  'NO RECOMENDAR': { color: C.red,     bg: C.redDim,    border: C.redLt,    label: 'NO RECOMENDADO', dot: '#DC2626' },
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const scoreColor = v => v >= 75 ? C.green : v >= 50 ? C.amber : C.red
+const RECO_CFG = {
+  'CONTRATAR':     { color: C.green,  bg: C.greenDim,  border: '#10B98130', icon: '✅' },
+  'RESERVA':       { color: C.amber,  bg: C.amberDim,  border: '#F59E0B30', icon: '🟡' },
+  'NO RECOMENDAR': { color: C.red,    bg: C.redDim,    border: '#F43F5E30', icon: '❌' },
 }
-
-const scoreColor = v => v >= 75 ? C.navy : v >= 50 ? C.accent : C.red
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:3px}
-
-/* Layout */
-.shell{display:flex;min-height:100vh}
-
-/* Sidebar */
-.sidebar{
-  width:300px;min-width:300px;
-  background:${C.sidebarBg};
-  display:flex;flex-direction:column;
-  position:sticky;top:0;height:100vh;
-  overflow-y:auto;overflow-x:hidden;
-  scrollbar-width:thin;
-  scrollbar-color:${C.sidebarDim} transparent;
-}
-.sidebar::-webkit-scrollbar{width:3px}
-.sidebar::-webkit-scrollbar-thumb{background:${C.sidebarDim}}
-@media(max-width:900px){.sidebar{width:260px;min-width:260px}}
-
-/* Sidebar header */
-.sb-header{
-  padding:20px 18px 16px;
-  border-bottom:1px solid ${C.sidebarDim};
-  display:flex;align-items:center;gap:10px;
-}
-.sb-logo{
-  width:36px;height:36px;border-radius:8px;
-  background:${C.accent};
-  display:flex;align-items:center;justify-content:center;
-  font-family:'DM Mono',monospace;font-weight:700;font-size:14px;color:#fff;
-  flex-shrink:0;
-}
-
-/* Sidebar section */
-.sb-section{padding:14px 16px;border-bottom:1px solid ${C.sidebarDim}}
-.sb-section-title{
-  display:flex;align-items:center;gap:8px;
-  margin-bottom:10px;
-}
-.sb-step{
-  width:20px;height:20px;border-radius:5px;
-  background:${C.accent};
-  display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:700;color:#fff;
-  font-family:'DM Mono',monospace;flex-shrink:0;
-}
-.sb-step.navy{background:${C.navyLt};border:1px solid ${C.sidebarDim}}
-.sb-label{font-size:11px;font-weight:700;color:${C.sidebarText};text-transform:uppercase;letter-spacing:.06em}
-.sb-sublabel{font-size:10px;color:${C.sidebarMuted};margin-top:1px}
-
-/* Dropzone */
-.dropzone{
-  border:1.5px dashed ${C.sidebarDim};border-radius:8px;
-  background:rgba(255,255,255,.04);
-  padding:14px 12px;text-align:center;cursor:pointer;
-  transition:all .2s;position:relative;
-}
-.dropzone:hover,.dropzone.drag{border-color:${C.accent};background:rgba(201,133,58,.08)}
-.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.dropzone-icon{font-size:20px;margin-bottom:4px;opacity:.6}
-.dropzone-label{font-size:11px;font-weight:600;color:${C.sidebarText}}
-.dropzone-hint{font-size:9px;color:${C.sidebarMuted};margin-top:2px;font-family:'DM Mono',monospace}
-
-/* File item sidebar */
-.sb-file{
-  display:flex;align-items:center;gap:7px;
-  background:rgba(255,255,255,.06);
-  border:1px solid ${C.sidebarDim};
-  border-radius:7px;padding:7px 9px;
-  margin-bottom:5px;
-  animation:fadeIn .25s ease both;
-}
-.sb-file-icon{
-  width:28px;height:28px;border-radius:5px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:700;color:#fff;flex-shrink:0;
-  font-family:'DM Mono',monospace;
-}
-.sb-file-name{font-size:11px;color:${C.sidebarText};flex:1;min-width:0;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sb-file-status{font-size:10px;color:${C.greenLt};flex-shrink:0}
-.sb-file-del{background:none;border:none;cursor:pointer;color:${C.sidebarMuted};
-  font-size:14px;padding:0 2px;transition:color .15s;flex-shrink:0}
-.sb-file-del:hover{color:${C.redLt}}
-
-/* Mode radio */
-.mode-item{
-  display:flex;align-items:center;gap:9px;
-  padding:8px 10px;border-radius:8px;
-  cursor:pointer;transition:background .15s;margin-bottom:4px;
-}
-.mode-item:hover{background:rgba(255,255,255,.05)}
-.mode-item.active{background:rgba(201,133,58,.12);border:1px solid rgba(201,133,58,.3)}
-.mode-item:not(.active){border:1px solid transparent}
-.mode-radio{
-  width:16px;height:16px;border-radius:50%;
-  border:2px solid ${C.sidebarDim};
-  display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;transition:all .15s;
-}
-.mode-radio.on{border-color:${C.accent};background:${C.accent}}
-.mode-radio.on::after{content:'';width:5px;height:5px;border-radius:50%;background:#fff}
-.mode-label{font-size:11px;font-weight:600;color:${C.sidebarText};flex:1}
-.mode-sub{font-size:9px;color:${C.sidebarMuted};margin-top:1px}
-.mode-cost{
-  font-family:'DM Mono',monospace;font-size:10px;font-weight:700;
-  color:${C.accent};background:rgba(201,133,58,.12);
-  border:1px solid rgba(201,133,58,.25);
-  border-radius:100px;padding:2px 7px;flex-shrink:0;
-}
-
-/* CTA */
-.cta-wrap{padding:14px 16px 20px}
-.cta-btn{
-  width:100%;padding:13px;border-radius:10px;border:none;
-  background:linear-gradient(135deg,${C.orange} 0%,${C.accent} 100%);
-  color:#fff;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;
-  cursor:pointer;transition:all .2s;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  box-shadow:0 4px 16px rgba(232,103,26,.35);
-  letter-spacing:.01em;
-}
-.cta-btn:hover{box-shadow:0 6px 24px rgba(232,103,26,.5);transform:translateY(-1px)}
-.cta-btn:disabled{background:#3D527A;box-shadow:none;cursor:not-allowed;transform:none;opacity:.7}
-.cta-sub{font-size:10px;color:${C.sidebarMuted};text-align:center;margin-top:6px}
-.reset-btn{
-  width:100%;padding:8px;border-radius:8px;margin-top:6px;
-  border:1px solid ${C.sidebarDim};background:transparent;
-  color:${C.sidebarMuted};cursor:pointer;font-family:'DM Sans',sans-serif;
-  font-size:11px;transition:all .15s;
-}
-.reset-btn:hover{color:${C.sidebarText};border-color:${C.sidebarText}}
-
-/* Security note */
-.sb-security{
-  padding:10px 16px;font-size:9px;color:${C.sidebarMuted};
-  display:flex;align-items:center;gap:5px;margin-top:auto;
-  border-top:1px solid ${C.sidebarDim};
-}
-
-/* Content area */
-.content{flex:1;display:flex;flex-direction:column;min-width:0}
-
-/* Top bar */
-.topbar{
-  background:${C.surface};
-  border-bottom:1px solid ${C.border};
-  padding:0 28px;
-  display:flex;align-items:center;
-  height:56px;gap:0;
-  position:sticky;top:0;z-index:50;
-}
-.topbar-brand{
-  font-family:'Syne',sans-serif;font-weight:700;font-size:20px;
-  color:${C.navy};margin-right:14px;white-space:nowrap;
-}
-.topbar-version{
-  font-size:11px;font-weight:600;color:${C.accent};
-  background:${C.accentDim};border:1px solid rgba(201,133,58,.25);
-  border-radius:100px;padding:2px 9px;margin-right:auto;
-  font-family:'DM Mono',monospace;
-}
-.topbar-credits{
-  display:flex;align-items:center;gap:6px;
-  font-family:'DM Mono',monospace;font-size:12px;
-  color:${C.accent};font-weight:700;
-  background:${C.accentDim};border:1px solid rgba(201,133,58,.2);
-  border-radius:100px;padding:5px 13px;margin-right:8px;
-}
-.topbar-btn{
-  padding:5px 13px;border-radius:100px;
-  border:1px solid ${C.border};background:transparent;
-  color:${C.muted};font-size:11px;cursor:pointer;
-  font-family:'DM Sans',sans-serif;font-weight:600;
-  transition:all .15s;margin-right:8px;
-}
-.topbar-btn:hover{border-color:${C.navy};color:${C.navy}}
-.topbar-user{
-  display:flex;align-items:center;gap:8px;
-  padding:5px 12px;border-radius:100px;
-  border:1px solid ${C.border};cursor:pointer;
-  transition:all .15s;
-}
-.topbar-user:hover{border-color:${C.borderHi}}
-.topbar-avatar{
-  width:28px;height:28px;border-radius:50%;
-  background:${C.navy};
-  display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;color:#fff;font-family:'DM Mono',monospace;
-}
-
-/* Result header bar */
-.result-hd{
-  background:${C.surface};
-  border-bottom:1px solid ${C.border};
-  padding:0 28px;
-  display:flex;align-items:center;
-  min-height:52px;gap:12px;flex-wrap:wrap;
-}
-.result-hd-info{
-  background:${C.bg};border:1px solid ${C.border};border-radius:8px;
-  padding:8px 16px;display:flex;gap:24px;flex-wrap:wrap;
-}
-.rh-item{display:flex;flex-direction:column;gap:1px}
-.rh-item-label{font-size:9px;color:${C.dim};text-transform:uppercase;letter-spacing:.08em;font-family:'DM Mono',monospace;font-weight:600}
-.rh-item-val{font-size:12px;font-weight:600;color:${C.text}}
-
-/* Tabs */
-.tabs{display:flex;gap:0;border-bottom:2px solid ${C.border}}
-.tab-btn{
-  padding:12px 20px;border:none;background:transparent;
-  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;
-  color:${C.muted};cursor:pointer;transition:all .15s;
-  border-bottom:2px solid transparent;margin-bottom:-2px;
-  white-space:nowrap;
-}
-.tab-btn.active{color:${C.navy};border-bottom-color:${C.accent}}
-.tab-btn:hover:not(.active){color:${C.text}}
-
-/* Export buttons */
-.export-btn{
-  display:flex;align-items:center;gap:5px;
-  padding:6px 13px;border-radius:7px;
-  border:1px solid ${C.border};background:${C.surface};
-  color:${C.muted};font-size:11px;font-weight:600;cursor:pointer;
-  font-family:'DM Sans',sans-serif;transition:all .15s;
-}
-.export-btn:hover{border-color:${C.navy};color:${C.navy}}
-
-/* Main content */
-.main-content{padding:24px 28px 60px;flex:1}
-
-/* Analysis complete banner */
-.analysis-banner{
-  background:${C.surface};border:1px solid ${C.border};
-  border-radius:12px;padding:16px 20px;
-  display:flex;align-items:center;gap:16px;
-  margin-bottom:20px;
-}
-.banner-icon{
-  width:44px;height:44px;border-radius:10px;
-  background:${C.accentDim};border:1px solid rgba(201,133,58,.2);
-  display:flex;align-items:center;justify-content:center;
-  font-size:20px;flex-shrink:0;
-}
-.banner-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:${C.navy};margin-bottom:4px}
-.banner-meta{display:flex;gap:24px;flex-wrap:wrap}
-.bm-item{display:flex;flex-direction:column}
-.bm-label{font-size:9px;color:${C.dim};text-transform:uppercase;letter-spacing:.08em;font-family:'DM Mono',monospace}
-.bm-val{font-size:11px;font-weight:600;color:${C.text};margin-top:1px}
-.banner-badge{
-  margin-left:auto;font-size:10px;font-weight:700;
-  background:rgba(27,42,74,.08);border:1px solid rgba(27,42,74,.15);
-  color:${C.navy};border-radius:100px;padding:4px 12px;
-  font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;
-}
-
-/* Candidate cards grid */
-.candidates-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
-  gap:16px;margin-bottom:24px;
-}
-.cand-card{
-  background:${C.surface};border:2px solid ${C.border};
-  border-radius:12px;padding:20px;
-  animation:fadeUp .4s cubic-bezier(.22,1,.36,1) both;
-  transition:border-color .2s,box-shadow .2s;
-}
-.cand-card:hover{border-color:${C.borderHi};box-shadow:0 4px 20px rgba(0,0,0,.08)}
-.cand-card.rank-1{border-color:rgba(201,133,58,.4)}
-.cand-card.rank-2{border-color:rgba(27,42,74,.2)}
-.cand-card.rank-3{border-color:${C.border}}
-
-.cand-rank{font-size:10px;font-weight:700;color:${C.accent};
-  font-family:'DM Mono',monospace;letter-spacing:.06em;margin-bottom:6px}
-.cand-name{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;
-  color:${C.navy};margin-bottom:3px;line-height:1.2}
-.cand-file{font-size:10px;color:${C.dim};font-family:'DM Mono',monospace;margin-bottom:10px}
-
-.reco-badge{
-  display:inline-flex;align-items:center;gap:5px;
-  padding:4px 12px;border-radius:100px;
-  font-size:10px;font-weight:700;letter-spacing:.07em;
-  text-transform:uppercase;font-family:'DM Mono',monospace;
-  border:1.5px solid;margin-bottom:12px;
-}
-
-/* Donut */
-.donut-wrap{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-.donut-labels{display:flex;flex-direction:column;gap:3px}
-.donut-score-label{font-size:9px;color:${C.dim};text-transform:uppercase;
-  letter-spacing:.08em;font-family:'DM Mono',monospace;font-weight:600}
-.donut-sub{display:flex;gap:10px;flex-wrap:wrap}
-.donut-sub-item{font-size:10px;color:${C.muted}}
-.donut-sub-item strong{color:${C.text}}
-
-/* Mini stats en card */
-.cand-stats{
-  display:flex;gap:0;
-  border:1px solid ${C.border};border-radius:8px;overflow:hidden;
-  margin-bottom:12px;
-}
-.cand-stat{
-  flex:1;padding:8px 10px;text-align:center;
-  border-right:1px solid ${C.border};
-}
-.cand-stat:last-child{border-right:none}
-.cand-stat-icon{font-size:14px;margin-bottom:2px}
-.cand-stat-label{font-size:8px;color:${C.dim};text-transform:uppercase;
-  letter-spacing:.07em;font-family:'DM Mono',monospace;font-weight:600}
-.cand-stat-val{font-size:13px;font-weight:700;font-family:'DM Mono',monospace}
-
-/* Strengths/gaps pills */
-.pill-list{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
-.pill{font-size:10px;padding:3px 9px;border-radius:100px;font-weight:500}
-.pill.good{background:${C.greenDim};border:1px solid rgba(26,122,69,.2);color:${C.green}}
-.pill.bad{background:${C.redDim};border:1px solid rgba(185,28,28,.2);color:${C.red}}
-
-/* Detail card expand */
-.expand-btn{
-  width:100%;padding:7px;border-radius:7px;
-  border:1px solid ${C.border};background:transparent;
-  color:${C.muted};cursor:pointer;font-size:11px;
-  font-family:'DM Sans',sans-serif;font-weight:600;
-  transition:all .15s;margin-top:8px;
-}
-.expand-btn:hover{border-color:${C.navy};color:${C.navy}}
-
-/* Detail tables */
-.detail-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
-.detail-table th{
-  background:${C.bg};padding:8px 12px;text-align:left;
-  font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-  color:${C.muted};border-bottom:1px solid ${C.border};
-  font-family:'DM Mono',monospace;
-}
-.detail-table td{padding:10px 12px;border-bottom:1px solid ${C.border};vertical-align:top;line-height:1.5}
-.detail-table tr:last-child td{border-bottom:none}
-.detail-table tr:hover td{background:rgba(0,0,0,.015)}
-.cumple-si{color:${C.green};font-weight:700;font-size:10px;font-family:'DM Mono',monospace}
-.cumple-parcial{color:${C.amber};font-weight:700;font-size:10px;font-family:'DM Mono',monospace}
-.cumple-no{color:${C.red};font-weight:700;font-size:10px;font-family:'DM Mono',monospace}
-
-/* Bottom panels */
-.bottom-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:20px}
-@media(max-width:1100px){.bottom-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:800px){.bottom-grid{grid-template-columns:1fr}}
-.bp{background:${C.surface};border:1px solid ${C.border};border-radius:12px;padding:18px}
-.bp-title{font-size:10px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.1em;color:${C.dim};font-family:'DM Mono',monospace;
-  margin-bottom:12px}
-
-/* Recom exec panel */
-.rec-exec{background:${C.surface};border:1px solid ${C.border};border-radius:12px;padding:20px}
-.rec-winner{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;
-  color:${C.navy};margin-bottom:4px;line-height:1.2}
-.rec-conf-grid{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
-.rec-conf-item{
-  flex:1;min-width:70px;
-  background:${C.bg};border:1px solid ${C.border};border-radius:8px;
-  padding:8px 10px;text-align:center;
-}
-.rec-conf-label{font-size:8px;color:${C.dim};text-transform:uppercase;
-  letter-spacing:.08em;font-family:'DM Mono',monospace;font-weight:600}
-.rec-conf-val{font-size:12px;font-weight:700;color:${C.text};margin-top:2px}
-
-/* Empty state */
-.empty-state{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  min-height:70vh;text-align:center;padding:0 24px;
-}
-.empty-icon{
-  width:80px;height:80px;border-radius:16px;
-  background:${C.surface};border:1px solid ${C.border};
-  display:flex;align-items:center;justify-content:center;
-  font-size:32px;margin-bottom:20px;
-  box-shadow:0 2px 12px rgba(0,0,0,.06);
-}
-.empty-title{font-family:'Syne',sans-serif;font-weight:700;font-size:22px;
-  color:${C.navy};margin-bottom:8px}
-.empty-sub{color:${C.muted};font-size:13px;max-width:320px;line-height:1.7;margin-bottom:24px}
-.empty-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.empty-pill{
-  padding:5px 14px;border-radius:100px;
-  font-size:11px;font-weight:600;border:1px solid;
-  font-family:'DM Mono',monospace;
-}
-
-/* Loading */
-.loading-box{
-  background:${C.surface};border:1px solid ${C.border};border-radius:12px;
-  padding:48px 32px;text-align:center;max-width:480px;margin:60px auto 0;
-}
-.loading-title{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;
-  color:${C.navy};margin:16px 0 6px}
-.loading-sub{font-size:13px;color:${C.muted};margin-bottom:24px}
-.progress-steps{display:flex;flex-direction:column;gap:4px;text-align:left}
-.ps-item{display:flex;align-items:center;gap:8px;padding:6px 10px;
-  border-radius:7px;font-size:11px;font-family:'DM Mono',monospace;transition:all .3s}
-.ps-item.done{color:${C.green};background:${C.greenDim}}
-.ps-item.active{color:${C.navy};background:rgba(27,42,74,.06);animation:pulse 1.2s ease infinite}
-.ps-item.pending{color:${C.dim}}
-
-/* Bar */
-.bar-row{display:grid;grid-template-columns:120px 1fr 34px;align-items:center;gap:8px;margin-bottom:7px}
-.bar-track{height:5px;background:${C.bg};border-radius:100px;overflow:hidden;border:1px solid ${C.border}}
-.bar-fill{height:100%;border-radius:100px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
-.bar-label{font-size:11px;color:${C.muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar-val{font-size:11px;font-family:'DM Mono',monospace;font-weight:700;text-align:right}
-
-/* Comparativa matrix */
-.matrix-table{width:100%;border-collapse:collapse;font-size:12px}
-.matrix-table th{background:${C.bg};padding:9px 14px;text-align:left;
-  font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-  color:${C.muted};border-bottom:1px solid ${C.border};font-family:'DM Mono',monospace}
-.matrix-table td{padding:11px 14px;border-bottom:1px solid ${C.border};vertical-align:middle}
-.matrix-table tr:last-child td{border-bottom:none}
-.matrix-table tr:hover td{background:rgba(0,0,0,.015)}
-
-/* Spinner */
-.spinner{width:28px;height:28px;border:2.5px solid ${C.border};
-  border-top-color:${C.accent};border-radius:50%;animation:spin .65s linear infinite}
-
-/* Footer */
-.page-footer{
-  background:${C.surface};border-top:1px solid ${C.border};
-  padding:14px 28px;display:flex;align-items:center;justify-content:space-between;
-  font-size:11px;color:${C.dim};font-family:'DM Mono',monospace;
-}
-
-/* Toast */
-.toast{
-  position:fixed;bottom:22px;right:22px;
-  background:${C.navy};border-radius:10px;
-  padding:11px 18px;display:flex;align-items:center;gap:9px;
-  font-size:12px;color:#fff;z-index:500;
-  box-shadow:0 8px 40px rgba(0,0,0,.25);max-width:300px;
-  animation:slideIn .3s cubic-bezier(.22,1,.36,1) both;
-}
-
-/* Modal */
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(17,24,39,.6);
-  backdrop-filter:blur(8px);z-index:200;
-  display:flex;align-items:center;justify-content:center;padding:18px;
-}
-.modal-box{
-  background:${C.surface};border:1px solid ${C.border};
-  border-radius:14px;padding:28px;max-width:380px;width:100%;
-  box-shadow:0 24px 80px rgba(0,0,0,.2);
-  animation:fadeUp .3s cubic-bezier(.22,1,.36,1) both;
-}
-.credit-card{
-  background:${C.bg};border:1px solid ${C.border};
-  border-radius:10px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .2s;
-}
-.credit-card:hover{border-color:${C.accent};background:${C.accentDim}}
-
-/* Keyframes */
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+::-webkit-scrollbar-track{background:${C.surface}}
+::-webkit-scrollbar-thumb{background:${C.border};border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:${C.borderHi}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
-@keyframes radarIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
-@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
-@media print {
-  .sidebar, .topbar, .result-hd, .export-btn, .page-footer { display:none!important; }
-  .content { margin:0!important; padding:0!important; }
-  .main-content { padding:12px!important; }
-  .shell { display:block!important; }
-  .bp { break-inside:avoid; page-break-inside:avoid; }
-  .candidates-grid { grid-template-columns:1fr!important; }
-  body { background:#fff!important; }
-}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes radarIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+.fade-up{animation:fadeUp .45s ease both}
+.slide-in{animation:slideIn .35s ease both}
+.glow-card{position:relative;background:${C.card};border:1px solid ${C.border};border-radius:12px;transition:border-color .25s,box-shadow .25s}
+.glow-card:hover{border-color:${C.borderHi};box-shadow:0 4px 24px rgba(0,0,0,.5)}
+.reco-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:'DM Mono',monospace}
+.score-ring{display:flex;align-items:center;justify-content:center;flex-direction:column;width:68px;height:68px;border-radius:50%;border:3px solid;font-family:'DM Mono',monospace;font-size:19px;font-weight:700;flex-shrink:0}
+.bar-row{display:grid;grid-template-columns:130px 1fr 36px;align-items:center;gap:9px;margin-bottom:6px}
+.bar-track{height:5px;background:${C.border};border-radius:100px;overflow:hidden}
+.bar-fill{height:100%;border-radius:100px;transition:width 1.1s ease}
+.cmp-table{width:100%;border-collapse:collapse;font-size:13px}
+.cmp-table th{background:${C.surface};padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${C.muted};border-bottom:1px solid ${C.border}}
+.cmp-table td{padding:11px 14px;border-bottom:1px solid ${C.border};vertical-align:middle}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table tr:hover td{background:rgba(255,255,255,.018)}
+.spinner{width:30px;height:30px;border:2px solid ${C.border};border-top-color:${C.accent};border-radius:50%;animation:spin .7s linear infinite}
 `
 
-// ─── DONUT CHART SVG ──────────────────────────────────────────────────────────
-function DonutChart({ score, size = 88 }) {
-  const col    = scoreColor(score)
-  const r      = (size - 10) / 2
-  const cx     = size / 2
-  const cy     = size / 2
-  const circ   = 2 * Math.PI * r
-  const filled = (score / 100) * circ
-  const gap    = circ - filled
-
+// ─── RADAR CHART ──────────────────────────────────────────────────────────────
+function ScoreRing({ score }) {
+  const col = scoreColor(score)
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block', animation: 'fadeIn .6s ease both' }}>
-      {/* Track */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={C.border} strokeWidth="8" />
-      {/* Fill */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={col} strokeWidth="8"
-        strokeDasharray={`${filled} ${gap}`}
-        strokeLinecap="round"
-        transform={`rotate(-90 ${cx} ${cy})`}
-        style={{ transition: 'stroke-dasharray 1s cubic-bezier(.22,1,.36,1)' }}
-      />
-      {/* Score text */}
-      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="18" fontWeight="700"
-        fontFamily="'DM Mono',monospace" fill={col}>{score}</text>
-      <text x={cx} y={cy + 12} textAnchor="middle" fontSize="8"
-        fontFamily="'DM Mono',monospace" fill={C.dim}>%</text>
-    </svg>
+    <div className="score-ring" style={{ borderColor: col, color: col, boxShadow: `0 0 18px ${col}22` }}>
+      <span>{score}</span>
+      <span style={{ fontSize: 9, letterSpacing: '.06em', opacity: .65 }}>/100</span>
+    </div>
   )
 }
 
-// ─── BAR ROW ──────────────────────────────────────────────────────────────────
+function RecoBadge({ reco }) {
+  const cfg = RECO_CFG[reco] || RECO_CFG['RESERVA']
+  return (
+    <span className="reco-badge" style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+      {cfg.icon} {reco}
+    </span>
+  )
+}
+
 function BarRow({ label, value }) {
   const col = scoreColor(value)
   return (
     <div className="bar-row">
-      <span className="bar-label">{label}</span>
-      <div className="bar-track"><div className="bar-fill" style={{ width:`${value}%`,background:col }}/></div>
-      <span className="bar-val" style={{ color:col }}>{value}</span>
-    </div>
-  )
-}
-
-// ─── CUMPLE BADGE ─────────────────────────────────────────────────────────────
-function CumpleBadge({ val }) {
-  if (!val) return null
-  if (val==='CUMPLE')             return <span className="cumple-si">✓ CUMPLE</span>
-  if (val==='CUMPLE PARCIALMENTE') return <span className="cumple-parcial">◐ PARCIAL</span>
-  return <span className="cumple-no">✕ NO CUMPLE</span>
-}
-
-// ─── BRECHA BADGE ─────────────────────────────────────────────────────────────
-function BrechaBadge({ val }) {
-  if (!val) return null
-  const cfg = {
-    'SIN BRECHA':   { cls:'cumple-si',      label:'SIN BRECHA' },
-    'PARCIAL':      { cls:'cumple-parcial',  label:'PARCIAL' },
-    'SIGNIFICATIVA':{ cls:'cumple-no',       label:'SIGNIFICATIVA' },
-    'CRITICA':      { cls:'cumple-no',       label:'CRÍTICA' },
-  }[val] || { cls:'cumple-no', label:val }
-  return <span className={cfg.cls} style={{ fontFamily:"'DM Mono'" }}>{cfg.label}</span>
-}
-
-// ─── FILE ITEM (sidebar) ──────────────────────────────────────────────────────
-function SbFileItem({ name, status, onRemove }) {
-  const ext = name.split('.').pop().toUpperCase().slice(0,3)
-  const extColor = ext==='PDF' ? '#E5534B' : ext==='DOC'||ext==='DOC' ? '#2B5CE6' : C.accent
-  const statusIcon = { ready:'✓', ocr:'◌', error:'✗', loading:'…' }[status] || '…'
-  const statusColor = { ready:C.greenLt, error:C.redLt, ocr:C.amberLt, loading:C.sidebarMuted }[status]
-  return (
-    <div className="sb-file">
-      <div className="sb-file-icon" style={{ background:extColor }}>{ext}</div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div className="sb-file-name">{name}</div>
-        <div style={{ fontSize:9,color:statusColor,fontFamily:"'DM Mono'" }}>{status==='ready'?'✓ Extraído correctamente':status==='loading'?'Procesando…':status==='ocr'?'OCR en curso…':'Error'}</div>
+      <span style={{ fontSize: 11, color: C.muted, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+      <div className="bar-track">
+        <div className="bar-fill" style={{ width: `${value}%`, background: col }} />
       </div>
-      <span className="sb-file-status" style={{ color:statusColor }}>{statusIcon}</span>
-      <button className="sb-file-del" onClick={onRemove}>×</button>
+      <span style={{ fontSize: 11, fontFamily: "'DM Mono'", color: col, fontWeight: 700, textAlign: 'right' }}>{value}</span>
     </div>
   )
 }
 
-// ─── DROPZONE ─────────────────────────────────────────────────────────────────
 function DropZone({ icon, label, hint, multiple, onFiles, inputRef }) {
   const [over, setOver] = useState(false)
   return (
-    <div className={`dropzone${over?' drag':''}`}
-      onDragOver={e=>{e.preventDefault();setOver(true)}}
-      onDragLeave={()=>setOver(false)}
-      onDrop={e=>{e.preventDefault();setOver(false);onFiles(e.dataTransfer.files)}}>
+    <div onDragOver={e => { e.preventDefault(); setOver(true) }}
+      onDragLeave={() => setOver(false)}
+      onDrop={e => { e.preventDefault(); setOver(false); onFiles(e.dataTransfer.files) }}
+      style={{ border: `1.5px dashed ${over ? C.accent : C.border}`, borderRadius: 9, padding: '16px 12px', textAlign: 'center', cursor: 'pointer', background: over ? C.accentDim : 'transparent', transition: 'all .2s', position: 'relative' }}>
       <input ref={inputRef} type="file" accept=".txt,.pdf,.docx" multiple={multiple}
-        onChange={e=>onFiles(e.target.files)} />
-      <div className="dropzone-icon">{icon}</div>
-      <div className="dropzone-label">{label}</div>
-      <div className="dropzone-hint">{hint}</div>
+        onChange={e => onFiles(e.target.files)}
+        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
+      <div style={{ fontSize: 22, marginBottom: 5 }}>{icon}</div>
+      <div style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>
+        <strong style={{ color: C.accent }}>{label}</strong>
+      </div>
+      <div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>{hint}</div>
+    </div>
+  )
+}
+
+function FileItem({ name, status, onRemove }) {
+  const cols = { ready: C.green, ocr: C.amber, error: C.red, loading: C.muted }
+  const icons = { ready: '✓', ocr: '⟳', error: '✗', loading: '…' }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 10px', fontSize: 12 }}>
+      <span style={{ color: cols[status] || C.muted, fontSize: 13 }}>{icons[status] || '…'}</span>
+      <span style={{ flex: 1, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+      {onRemove && <span onClick={onRemove} style={{ cursor: 'pointer', color: C.dim, fontSize: 16, lineHeight: 1 }}>×</span>}
+    </div>
+  )
+}
+
+
+// ─── PROFILE CARD — Cuadro resumen estructurado del cargo ────────────────────
+const CUMPLE_CFG = {
+  'CUMPLE':             { color: '#10B981', bg: 'rgba(16,185,129,0.12)', icon: '✅' },
+  'CUMPLE PARCIALMENTE':{ color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', icon: '🟡' },
+  'NO CUMPLE':          { color: '#F43F5E', bg: 'rgba(244,63,94,0.12)',  icon: '❌' },
+}
+
+function ProfileFieldRow({ label, value, mono = false }) {
+  if (!value || (Array.isArray(value) && value.length === 0)) return null
+  const display = Array.isArray(value) ? value.join(' · ') : value
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '148px 1fr', gap: 8, padding: '7px 0', borderBottom: `1px solid ${C.border}` }}>
+      <span style={{ fontSize: 10, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', paddingTop: 1 }}>{label}</span>
+      <span style={{ fontSize: 12, color: mono ? C.accent : C.text, fontFamily: mono ? "'DM Mono'" : "'DM Sans'", lineHeight: 1.55 }}>{display}</span>
+    </div>
+  )
+}
+
+function ProfileCard({ profile, loading }) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  if (loading) return (
+    <div className="glow-card fade-up" style={{ padding: '18px 22px', borderLeft: `3px solid ${C.accent}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="spinner" />
+      <div>
+        <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13, color: C.accent }}>Extrayendo estructura del perfil…</div>
+        <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>La IA está leyendo el documento y organizando los requisitos del cargo</div>
+      </div>
+    </div>
+  )
+
+  if (!profile) return null
+
+  return (
+    <div className="glow-card fade-up" style={{ borderLeft: `3px solid ${C.accent}`, marginBottom: 4 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: collapsed ? 'none' : `1px solid ${C.border}`, cursor: 'pointer' }} onClick={() => setCollapsed(c => !c)}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(79,125,243,0.08)', border: `1px solid rgba(79,125,243,0.2)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📋</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 9, color: C.accent, fontFamily: "'DM Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
+            Cuadro Resumen del Cargo · Referencia de Contraste
+          </div>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1, color: C.text }}>
+            {profile.nombreCargo || 'Cargo no identificado'}
+          </div>
+          {(profile.area || profile.dependencia) && (
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+              {[profile.area, profile.dependencia].filter(Boolean).join(' · ')}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          {profile.jornada && (
+            <span style={{ fontSize: 10, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 100, padding: '3px 9px' }}>{profile.jornada}</span>
+          )}
+          {profile.lugarTrabajo && (
+            <span style={{ fontSize: 10, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 100, padding: '3px 9px' }}>📍 {profile.lugarTrabajo}</span>
+          )}
+          <span style={{ color: C.dim, fontSize: 14 }}>{collapsed ? '▸' : '▾'}</span>
+        </div>
+      </div>
+
+      {!collapsed && (
+        <div style={{ padding: '16px 22px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(340px,1fr))', gap: '0 32px' }}>
+          {/* Columna izquierda */}
+          <div>
+            {profile.mision && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Misión del Cargo</div>
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 13px', fontStyle: 'italic' }}>
+                  "{profile.mision}"
+                </div>
+              </div>
+            )}
+
+            {profile.estudios && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Estudios Requeridos</div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 13px' }}>
+                  <ProfileFieldRow label="Nivel" value={profile.estudios.nivelRequerido} mono />
+                  {profile.estudios.carrerasAceptadas?.length > 0 && (
+                    <ProfileFieldRow label="Carreras" value={profile.estudios.carrerasAceptadas} />
+                  )}
+                  {profile.estudios.requisitosAdicionales && (
+                    <ProfileFieldRow label="Adicionales" value={profile.estudios.requisitosAdicionales} />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {profile.experiencia && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Experiencia Requerida</div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 13px' }}>
+                  <ProfileFieldRow label="General" value={profile.experiencia.generalAnios} mono />
+                  {profile.experiencia.sectoresDeseados?.length > 0 && (
+                    <ProfileFieldRow label="Sectores" value={profile.experiencia.sectoresDeseados} />
+                  )}
+                  {profile.experiencia.especifica?.length > 0 && (
+                    <div style={{ paddingTop: 8 }}>
+                      <div style={{ fontSize: 10, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Específica</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {profile.experiencia.especifica.map((e, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                            <span style={{ color: C.accent, fontSize: 11, marginTop: 1, flexShrink: 0 }}>◈</span>
+                            <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>{e}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Columna derecha */}
+          <div>
+            {profile.funciones?.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Funciones Principales</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {profile.funciones.slice(0, 6).map((f, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '8px 10px' }}>
+                      <span style={{ fontFamily: "'DM Mono'", fontSize: 10, color: C.accent, fontWeight: 700, minWidth: 18, paddingTop: 1 }}>{String(i + 1).padStart(2, '0')}</span>
+                      <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {profile.competencias?.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Competencias</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {profile.competencias.map((c, i) => (
+                      <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 100, background: `${C.accent}12`, border: `1px solid ${C.accent}28`, color: C.accent, fontWeight: 500 }}>{c}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {profile.conocimientosTecnicos?.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Conocim. Técnicos</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {profile.conocimientosTecnicos.map((k, i) => (
+                      <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 100, background: `${C.gold}12`, border: `1px solid ${C.gold}28`, color: C.gold, fontWeight: 500 }}>{k}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {profile.condicionesEspeciales?.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Condiciones Especiales</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {profile.condicionesEspeciales.map((c, i) => (
+                    <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 100, background: C.amberDim, border: `1px solid ${C.amber}28`, color: C.amber, fontWeight: 500 }}>⚠ {c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(profile.remuneracion || profile.idiomas) && (
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 13px' }}>
+                <ProfileFieldRow label="Remuneración" value={profile.remuneracion} mono />
+                <ProfileFieldRow label="Idiomas" value={profile.idiomas} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── MATCH DETAIL SECTION (dentro de CandidateCard) ──────────────────────────
+function MatchDetailTable({ matchDetail }) {
+  if (!matchDetail) return null
+  const labels = {
+    formacion: 'Formación Académica',
+    experienciaGeneral: 'Experiencia General',
+    experienciaEspecifica: 'Experiencia Específica',
+    formacionComplementaria: 'Formación Complementaria',
+    condicionesEspeciales: 'Condiciones Especiales',
+  }
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 8 }}>
+        Contraste Perfil vs. Candidato
+      </div>
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: C.surface }}>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '22%' }}>Criterio</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '34%' }}>Requerido por Perfil</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '34%' }}>Candidato aporta</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '10%' }}>Cumple</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(matchDetail).map(([key, val], i) => {
+              const cfg = CUMPLE_CFG[val.cumple] || CUMPLE_CFG['CUMPLE PARCIALMENTE']
+              return (
+                <tr key={key} style={{ borderTop: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.012)' }}>
+                  <td style={{ padding: '9px 12px', fontWeight: 600, color: C.muted, fontSize: 11 }}>{labels[key] || key}</td>
+                  <td style={{ padding: '9px 12px', color: C.dim, fontSize: 11, lineHeight: 1.5 }}>{val.requerido || '—'}</td>
+                  <td style={{ padding: '9px 12px', color: C.text, fontSize: 11, lineHeight: 1.5 }}>{val.candidato || '—'}</td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono'", color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30`, borderRadius: 100, padding: '3px 8px', whiteSpace: 'nowrap' }}>
+                      {cfg.icon} {val.cumple}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+
+// ─── COMPETENCY CONTRAST TABLE (dentro de CandidateCard, modo competencies) ──
+function CompetencyContrastTable({ competencyContrast }) {
+  if (!competencyContrast?.length) return null
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 8 }}>
+        Contraste Diccionario vs. Candidato
+      </div>
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: C.surface }}>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '18%' }}>Competencia</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '10%' }}>Requerido</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '10%' }}>Observado</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '44%' }}>Evidencia levantada del CV</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '8%' }}>Score</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.dim, width: '10%' }}>Brecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {competencyContrast.map((row, i) => {
+              const nivelReqCfg  = NIVEL_CFG[row.nivelRequerido]  || NIVEL_CFG['INTERMEDIO']
+              const nivelObsCfg  = NIVEL_CFG[row.nivelObservado]  || { color: C.dim, dot: '○' }
+              const brechaCfg    = BRECHA_CFG[row.brecha]         || BRECHA_CFG['PARCIAL']
+              return (
+                <tr key={i} style={{ borderTop: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.012)' }}>
+                  <td style={{ padding: '9px 12px', fontWeight: 700, color: C.text, fontSize: 12, lineHeight: 1.4 }}>{row.competencia}</td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono'", color: nivelReqCfg.color }}>
+                      {nivelReqCfg.dot} {row.nivelRequerido}
+                    </span>
+                  </td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono'", color: nivelObsCfg.color }}>
+                      {nivelObsCfg.dot || '○'} {row.nivelObservado}
+                    </span>
+                  </td>
+                  <td style={{ padding: '9px 12px', color: C.muted, fontSize: 11, lineHeight: 1.6 }}>{row.evidencia}</td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 14, color: scoreColor(row.score) }}>{row.score}</span>
+                  </td>
+                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: brechaCfg.color, whiteSpace: 'nowrap' }}>
+                      {brechaCfg.icon} {row.brecha}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
 // ─── CANDIDATE CARD ───────────────────────────────────────────────────────────
-function CandidateCard({ candidate: c, idx, tab }) {
-  const [expanded, setExpanded] = useState(false)
-  const reco = RECO[c.recommendation] || RECO['RESERVA']
-  const rankLabels = ['1°','2°','3°']
-  const rankClass  = idx===0?'rank-1':idx===1?'rank-2':'rank-3'
+function CandidateCard({ candidate: c, idx }) {
+  const [open, setOpen] = useState(true)
+  const rankColors = ['#EAB308', '#94A3B8', '#CD8B45']
+  const rankLabels = ['🥇 1° Lugar', '🥈 2° Lugar', '🥉 3° Lugar']
+  const borderLeft = `3px solid ${idx < 3 ? rankColors[idx] : C.border}`
 
   return (
-    <div className={`cand-card ${rankClass}`} style={{ animationDelay:`${idx*.08}s` }}>
-      {idx<3&&<div className="cand-rank">{rankLabels[idx]} LUGAR</div>}
-      <div className="cand-name">{c.name||'Candidato'}</div>
-      <div className="cand-file">{c.fileName}</div>
-      <div style={{ display:'flex', alignItems:'center', gap:0, marginBottom:10 }}>
-        <span className="reco-badge" style={{ color:reco.color,background:reco.bg,borderColor:reco.border }}>
-          <span style={{ width:6,height:6,borderRadius:'50%',background:reco.dot,display:'inline-block' }}/>
-          {reco.label}
-        </span>
-      </div>
-
-      {/* Donut + resumen — layout adaptable */}
-      <div className="donut-wrap" style={{ alignItems:'flex-start' }}>
-        <DonutChart score={c.score} size={88} />
-        <div className="donut-labels" style={{ flex:1 }}>
-          <div className="donut-score-label">Match Global</div>
-          {c.summary && <div style={{ fontSize:11,color:C.muted,lineHeight:1.6,maxWidth:'none' }}>{c.summary}</div>}
-        </div>
-      </div>
-
-      {/* Fortalezas */}
-      {c.strengths?.length>0&&(
-        <div style={{ marginBottom:6 }}>
-          <div style={{ fontSize:9,color:C.dim,textTransform:'uppercase',letterSpacing:'.08em',fontFamily:"'DM Mono'",fontWeight:700,marginBottom:4 }}>Fortalezas principales</div>
-          <div className="pill-list">
-            {c.strengths.slice(0,3).map((s,i)=>(
-              <span key={i} className="pill good">
-                <span style={{ marginRight:4 }}>✓</span>{s}
+    <div className="glow-card slide-in" style={{ padding: '20px 22px', borderLeft, animationDelay: `${idx * 0.06}s` }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
+        <ScoreRing score={c.score} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {idx < 3 && (
+            <div style={{ fontSize: 9, fontWeight: 700, color: rankColors[idx], letterSpacing: '.1em', textTransform: 'uppercase', fontFamily: "'DM Mono'", marginBottom: 3 }}>
+              {rankLabels[idx]}
+            </div>
+          )}
+          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.2, marginBottom: 5 }}>{c.name || 'Candidato'}</div>
+          <div style={{ fontSize: 11, color: C.dim, marginBottom: 7 }}>{c.fileName}</div>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
+            {c.recommendation && <RecoBadge reco={c.recommendation} />}
+            {c.scoreProfile != null && (
+              <span style={{ fontSize: 10, color: C.muted, fontFamily: "'DM Mono'" }}>
+                Perfil: <strong style={{ color: scoreColor(c.scoreProfile) }}>{c.scoreProfile}</strong>
+                {' '}· Compet: <strong style={{ color: scoreColor(c.scoreCompetencies) }}>{c.scoreCompetencies}</strong>
               </span>
-            ))}
+            )}
           </div>
         </div>
-      )}
+        <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, cursor: 'pointer', color: C.dim, fontSize: 11, padding: '5px 9px', fontFamily: "'DM Mono'", transition: 'all .2s' }}>
+          {open ? '▾ ocultar' : '▸ ver'}
+        </button>
+      </div>
 
-      {/* Brechas */}
-      {c.gaps?.length>0&&(
-        <div style={{ marginBottom:8 }}>
-          <div style={{ fontSize:9,color:C.dim,textTransform:'uppercase',letterSpacing:'.08em',fontFamily:"'DM Mono'",fontWeight:700,marginBottom:4 }}>Brechas principales</div>
-          <div className="pill-list">
-            {c.gaps.slice(0,2).map((g,i)=>(
-              <span key={i} className="pill bad">
-                <span style={{ marginRight:4 }}>✕</span>{g}
-              </span>
-            ))}
+      {open && (
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            {(c.executiveSummary || c.summary) && (
+              <div style={{ fontSize: 13, lineHeight: 1.7, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+                {c.executiveSummary || c.summary}
+              </div>
+            )}
+            {c.strengths?.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 5 }}>Fortalezas</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {c.strengths.map((s, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.greenDim, border: `1px solid ${C.green}28`, color: C.green, fontWeight: 500 }}>{s}</span>)}
+                </div>
+              </div>
+            )}
+            {c.gaps?.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 5 }}>Brechas</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {c.gaps.map((g, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.redDim, border: `1px solid ${C.red}28`, color: C.red, fontWeight: 500 }}>{g}</span>)}
+                </div>
+              </div>
+            )}
+            {c.riskFactors?.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 5 }}>Factores de Riesgo</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {c.riskFactors.map((r, i) => <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: C.amberDim, border: `1px solid ${C.amber}28`, color: C.amber, fontWeight: 500 }}>⚠ {r}</span>)}
+                </div>
+              </div>
+            )}
+            {c.scoreBreakdown && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: 8 }}>Desglose Curricular</div>
+                {Object.entries(c.scoreBreakdown).map(([k, v]) => <BarRow key={k} label={k} value={v} />)}
+              </div>
+            )}
+            {/* Tabla de contraste perfil vs candidato — solo modo profile */}
+            {c.matchDetail && <MatchDetailTable matchDetail={c.matchDetail} />}
+            {c.competencyContrast?.length > 0 && <CompetencyContrastTable competencyContrast={c.competencyContrast} />}
           </div>
-        </div>
-      )}
-
-      {/* Expandir detalle */}
-      <button className="expand-btn" onClick={()=>setExpanded(o=>!o)}>
-        {expanded ? '▲ Ocultar detalle' : '▼ Ver detalle completo'}
-      </button>
-
-      {expanded&&(
-        <div style={{ marginTop:14 }}>
-          {/* Resumen ejecutivo */}
-          {c.executiveSummary&&(
-            <div style={{ fontSize:12,lineHeight:1.7,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:'12px 14px',marginBottom:14 }}>
-              {c.executiveSummary}
-            </div>
-          )}
-          {/* Desglose curricular */}
-          {c.scoreBreakdown&&(
-            <div style={{ marginBottom:14 }}>
-              <div style={{ fontSize:9,color:C.dim,textTransform:'uppercase',letterSpacing:'.1em',fontWeight:700,fontFamily:"'DM Mono'",marginBottom:8 }}>Desglose Curricular</div>
-              {Object.entries(c.scoreBreakdown).map(([k,v])=><BarRow key={k} label={k} value={v}/>)}
-            </div>
-          )}
-          {/* Radar */}
-          {c.competencies&&Object.keys(c.competencies).length>0&&(
-            <div style={{ background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:'16px 12px 12px',marginBottom:14 }}>
-              <div style={{ fontSize:9,color:C.dim,textTransform:'uppercase',letterSpacing:'.1em',fontWeight:700,fontFamily:"'DM Mono'",textAlign:'center',marginBottom:8 }}>Radar Competencial</div>
-            </div>
-          )}
-          {/* Tabla matchDetail */}
-          {c.matchDetail&&(
-            <div style={{ overflowX:'auto',marginBottom:14 }}>
-              <div style={{ fontSize:9,color:C.dim,textTransform:'uppercase',letterSpacing:'.1em',fontWeight:700,fontFamily:"'DM Mono'",marginBottom:6 }}>Contraste Perfil vs. Candidato</div>
-              <table className="detail-table">
-                <thead><tr><th>Criterio</th><th>Requerido</th><th>Candidato aporta</th><th>Cumple</th></tr></thead>
-                <tbody>
-                  {Object.entries(c.matchDetail).map(([k,v])=>(
-                    <tr key={k}>
-                      <td style={{ fontWeight:600,color:C.text,fontSize:11,whiteSpace:'nowrap' }}>
-                        {{formacion:'Formación',experienciaGeneral:'Exp. General',experienciaEspecifica:'Exp. Específica',formacionComplementaria:'Formación Comp.',condicionesEspeciales:'Condiciones'}[k]||k}
-                      </td>
-                      <td style={{ color:C.muted }}>{v.requerido}</td>
-                      <td style={{ color:C.text }}>{v.candidato}</td>
-                      <td><CumpleBadge val={v.cumple}/></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {c.competencies && Object.keys(c.competencies).length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700 }}>Radar Competencial</div>
             </div>
           )}
         </div>
@@ -798,686 +643,600 @@ function CandidateCard({ candidate: c, idx, tab }) {
 
 // ─── COMPARATIVE PANEL ────────────────────────────────────────────────────────
 function ComparativePanel({ compareResults, onExportCSV }) {
-  const { profile, full } = compareResults
+  const { profile, competencies, full } = compareResults
+  const [tab, setTab] = useState('matrix')
+
   const allNames = [...new Set([
-    ...(profile?.candidates||[]).map(c=>c.name),
-    ...(full?.candidates||[]).map(c=>c.name),
+    ...(profile?.candidates || []).map(c => c.name),
+    ...(competencies?.candidates || []).map(c => c.name),
+    ...(full?.candidates || []).map(c => c.name),
   ])]
-  const find = (res,name) => res?.candidates?.find(c=>c.name===name)
-  const matrix = allNames.map(name=>{
-    const p=find(profile,name), f=find(full,name)
-    const scores=[p?.score,f?.score].filter(s=>s!=null)
-    const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0
-    return { name, p, f, avg, reco:p?.recommendation||f?.recommendation }
-  }).sort((a,b)=>b.avg-a.avg)
-  const winner = matrix[0]
-  const winnerReco = RECO[winner?.reco] || RECO['RESERVA']
+
+  const find = (results, name) => results?.candidates?.find(c => c.name === name)
+
+  const matrix = allNames.map(name => {
+    const p = find(profile, name), co = find(competencies, name), f = find(full, name)
+    const scores = [p?.score, co?.score, f?.score].filter(s => s != null)
+    const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
+    return { name, p, co, f, avg }
+  }).sort((a, b) => b.avg - a.avg)
+
+  const tabStyle = active => ({
+    padding: '7px 16px', borderRadius: 7, border: `1px solid ${active ? C.accent : C.border}`,
+    background: active ? C.accentDim : 'transparent',
+    color: active ? C.accent : C.muted,
+    fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600,
+    cursor: 'pointer', transition: 'all .2s',
+  })
 
   return (
     <div>
-      <div className="bp" style={{ marginBottom:16, overflowX:'auto' }}>
-        <div className="bp-title">Tabla Comparativa por Tipo de Análisis</div>
-        <table className="matrix-table">
-          <thead>
-            <tr>
-              <th>Candidato</th>
-              <th>Perfil</th>
-              <th>Match Global</th>
-              <th>Recomendación</th>
-            </tr>
-          </thead>
-          <tbody>
-            {matrix.map((row,i)=>{
-              const reco = RECO[row.reco]||RECO['RESERVA']
-              return (
-                <tr key={i}>
-                  <td>
-                    <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                      <div style={{ width:22,height:22,borderRadius:6,background:i===0?C.accent:C.navy,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'#fff',fontFamily:"'DM Mono'",flexShrink:0 }}>{i+1}</div>
-                      <span style={{ fontWeight:600,color:C.navy }}>{row.name}</span>
-                    </div>
-                  </td>
-                  <td><span style={{ fontFamily:"'DM Mono'",fontWeight:700,color:scoreColor(row.p?.score||0) }}>{row.p?.score??'—'}%</span></td>
-                  <td><span style={{ fontFamily:"'DM Mono'",fontWeight:700,fontSize:14,color:scoreColor(row.avg) }}>{row.avg}%</span></td>
-                  <td><span className="reco-badge" style={{ color:reco.color,background:reco.bg,borderColor:reco.border }}>{reco.label}</span></td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      {/* Sub-tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        {[{ id: 'matrix', label: '📊 Matriz Cruzada' }, { id: 'radars', label: '🕸 Radares' }, { id: 'ranking', label: '🏆 Ranking Final' }]
+          .map(t => <button key={t.id} onClick={() => setTab(t.id)} style={tabStyle(tab === t.id)}>{t.label}</button>)}
+        <button onClick={onExportCSV} style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: 7, border: `1px solid ${C.green}40`, background: C.greenDim, color: C.green, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          ⬇ Exportar CSV
+        </button>
       </div>
 
-      <div className="bottom-grid">
+      {/* MATRIZ */}
+      {tab === 'matrix' && (
+        <div className="glow-card" style={{ overflow: 'auto' }}>
+          <table className="cmp-table">
+            <thead>
+              <tr>
+                <th style={{ minWidth: 160 }}>Candidato</th>
+                <th style={{ textAlign: 'center' }}>📋 Perfil</th>
+                <th style={{ textAlign: 'center' }}>🧠 Competencias</th>
+                <th style={{ textAlign: 'center' }}>⚡ Promedio</th>
+                <th>Recomendación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matrix.map((row, i) => {
+                const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
+                return (
+                  <tr key={i}>
+                    <td>
+                      <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14 }}>{row.name}</div>
+                      {i < 3 && <div style={{ fontSize: 9, color: ['#EAB308','#94A3B8','#CD8B45'][i], fontFamily: "'DM Mono'", fontWeight: 700, letterSpacing: '.08em', marginTop: 2 }}>
+                        {['🥇 MEJOR MATCH','🥈 2° LUGAR','🥉 3° LUGAR'][i]}
+                      </div>}
+                    </td>
+                    {[row.p?.score, row.co?.score, row.f?.score].map((s, j) => (
+                      <td key={j} style={{ textAlign: 'center' }}>
+                        {s != null
+                          ? <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 16, color: scoreColor(s) }}>{s}</span>
+                          : <span style={{ color: C.dim, fontSize: 12 }}>—</span>}
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'center' }}>
+                      <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 17, color: scoreColor(row.avg) }}>{row.avg}</span>
+                    </td>
+                    <td>{reco && <RecoBadge reco={reco} />}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-        {/* Matrix scores por competencia */}
-        <div className="bp">
-          <div className="bp-title">Ranking Final</div>
-          {matrix.map((row,i)=>{
-            const reco=RECO[row.reco]||RECO['RESERVA']
+      {/* RADARES */}
+      {tab === 'radars' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: 14 }}>
+          {matrix.map((row, i) => {
+            const comps = row.f?.competencies || row.co?.competencies
+            if (!comps) return (
+              <div key={i} className="glow-card" style={{ padding: 18, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{row.name}</div>
+                <div style={{ fontSize: 12, color: C.dim }}>Sin datos de competencias</div>
+              </div>
+            )
+            const colors = [C.gold, C.accent, C.green, C.purple]
+            const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
             return (
-              <div key={i} style={{ display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:i<matrix.length-1?`1px solid ${C.border}`:'none' }}>
-                <DonutChart score={row.avg} size={56}/>
-                <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ fontFamily:"'Syne'",fontWeight:700,fontSize:13,color:C.navy,marginBottom:3 }}>{row.name}</div>
-                  <span className="reco-badge" style={{ color:reco.color,background:reco.bg,borderColor:reco.border,fontSize:9 }}>{reco.label}</span>
+              <div key={i} className="glow-card" style={{ padding: '18px', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{row.name}</div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                  {reco && <RecoBadge reco={reco} />}
+                  <span style={{ fontFamily: "'DM Mono'", color: scoreColor(row.avg), fontWeight: 700, fontSize: 13 }}>AVG: {row.avg}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
                 </div>
               </div>
             )
           })}
-          <button className="export-btn" onClick={onExportCSV} style={{ width:'100%',marginTop:14,justifyContent:'center',background:C.navy,color:'#fff',border:'none' }}>
-            ⬇ Exportar CSV
-          </button>
         </div>
+      )}
 
-        {/* Recomendación ejecutiva */}
-        {winner&&(
-          <div className="rec-exec">
-            <div className="bp-title">Recomendación Ejecutiva</div>
-            <div style={{ fontSize:20,marginBottom:8 }}>🏆</div>
-            <div className="rec-winner">{winner.name}</div>
-            <span className="reco-badge" style={{ color:winnerReco.color,background:winnerReco.bg,borderColor:winnerReco.border,marginBottom:10,display:'inline-flex' }}>
-              RECOMENDADO PARA EL CARGO
-            </span>
-            <div style={{ fontSize:12,color:C.muted,lineHeight:1.7,marginBottom:14 }}>
-              {winner.f?.executiveSummary||winner.f?.summary||winner.p?.summary||'Candidato con el mayor ajuste global al perfil requerido.'}
-            </div>
-            <div className="rec-conf-grid">
-              {[['Confianza','ALTA'],['Nivel de ajuste','ÓPTIMO'],['Riesgo rotación','BAJO']].map(([l,v])=>(
-                <div key={l} className="rec-conf-item">
-                  <div className="rec-conf-label">{l}</div>
-                  <div className="rec-conf-val" style={{ color:C.green }}>{v}</div>
+      {/* RANKING */}
+      {tab === 'ranking' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {matrix.map((row, i) => {
+            const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
+            const summary = row.f?.summary || row.p?.summary
+            const rankColor = ['#EAB308','#94A3B8','#CD8B45'][i] || C.border
+            return (
+              <div key={i} className="glow-card" style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, borderLeft: `3px solid ${rankColor}` }}>
+                <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 22, color: C.dim, minWidth: 32 }}>#{i + 1}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>{row.name}</div>
+                  {summary && <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{summary}</div>}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── PROFILE CARD ─────────────────────────────────────────────────────────────
-function ProfileCard({ profile }) {
-  if (!profile) return null
-  const fields = [
-    ['Cargo',         profile.nombreCargo],
-    ['Área',          profile.area],
-    ['Misión',        profile.mision],
-    ['Formación',     profile.estudios?.nivelRequerido],
-    ['Carreras',      profile.estudios?.carrerasAceptadas?.join(', ')],
-    ['Exp. General',  profile.experiencia?.generalAnios],
-    ['Exp. Específica',profile.experiencia?.especifica?.join(' · ')],
-    ['Sectores',      profile.experiencia?.sectoresDeseados?.join(', ')],
-    ['Conocimientos', profile.conocimientosTecnicos?.join(', ')],
-    ['Idiomas',       profile.idiomas],
-    ['Condiciones',   profile.condicionesEspeciales?.join(' · ')],
-    ['Lugar',         profile.lugarTrabajo],
-    ['Jornada',       profile.jornada],
-  ].filter(([,v])=>v&&v!=='null')
-
-  return (
-    <div className="bp" style={{ marginBottom:16 }}>
-      <div className="bp-title">📋 Cuadro Resumen — Perfil del Cargo</div>
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:'4px 16px' }}>
-        {fields.map(([label,val])=>(
-          <div key={label} style={{ display:'grid',gridTemplateColumns:'100px 1fr',gap:6,padding:'6px 0',borderBottom:`1px solid ${C.border}`,fontSize:12,alignItems:'start' }}>
-            <span style={{ color:C.dim,fontFamily:"'DM Mono'",fontSize:9,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',paddingTop:2 }}>{label}</span>
-            <span style={{ color:C.text,lineHeight:1.5 }}>{val}</span>
-          </div>
-        ))}
-      </div>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {[
+                    { label: 'Perfil', score: row.p?.score, color: C.accent },
+                    { label: 'Compet.', score: row.co?.score, color: C.gold },
+                    { label: 'AVG', score: row.avg, color: C.text },
+                  ].map(({ label, score, color }) => (
+                    <div key={label} style={{ textAlign: 'center', minWidth: 42 }}>
+                      <div style={{ fontSize: 9, color: C.dim, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 17, color: score != null ? scoreColor(score) : C.dim }}>
+                        {score ?? '—'}
+                      </div>
+                    </div>
+                  ))}
+                  {reco && <RecoBadge reco={reco} />}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [credits, setCredits]             = useState(50)
-  const [jobFile, setJobFile]             = useState(null)
-  const [profileData, setProfileData]     = useState(null)
-  const [profileLoading, setProfileLoading] = useState(false)
-  const [cvFiles, setCvFiles]             = useState([])
-  const [mode, setMode]                   = useState('profile')
-  const [loading, setLoading]             = useState(false)
-  const [loadMsg, setLoadMsg]             = useState('')
-  const [results, setResults]             = useState(null)
+  const [credits, setCredits]                   = useState(50)
+  const [jobFile, setJobFile]                   = useState(null)
+  const [profileData, setProfileData]           = useState(null)
+  const [profileLoading, setProfileLoading]     = useState(false)
+  const [cvFiles, setCvFiles]                   = useState([])
+  const [mode, setMode]                     = useState('profile')
+  const [loading, setLoading]               = useState(false)
+  const [loadMsg, setLoadMsg]               = useState('')
+  const [results, setResults]               = useState(null)
   const [compareResults, setCompareResults] = useState(null)
-  const [activeTab, setActiveTab]         = useState('resumen')
-  const [error, setError]                 = useState('')
-  const [toast, setToast]                 = useState(null)
-  const [modal, setModal]                 = useState(false)
-  // Historial de la sesión — acumula todos los análisis sin borrar los anteriores
-  const [history, setHistory]             = useState([])   // [{id, label, results, compareResults, date, mode}]
-  const [activeHistoryId, setActiveHistoryId] = useState(null)
-  // Opción C: modo inteligente automático vs. personalizado
-  const [showAdvanced, setShowAdvanced]   = useState(false)
-  const jobRef = useRef(), cvRef = useRef()
+  const [activeView, setActiveView]         = useState('results')
+  const [error, setError]                   = useState('')
+  const [toast, setToast]                   = useState(null)
+  const [modal, setModal]                   = useState(false)
+  const jobRef = useRef()
+  const cvRef  = useRef()
 
-  const notify = (icon, msg, type='s') => {
+  const notify = (icon, msg, type = 's') => {
     setToast({ icon, msg, type })
-    setTimeout(()=>setToast(null), 3400)
+    setTimeout(() => setToast(null), 3400)
   }
 
+  async function handleJobFiles(fileList) {
+    const file = fileList[0]
+    if (!file) return
+    setJobFile({ name: file.name, content: '', status: 'loading' })
+    setProfileData(null)
+    setCompetencyDict(null)
+    setResults(null)
+    setCompareResults(null)
+    try {
+      const extracted = await extractText(file, msg => setLoadMsg(msg))
+      setJobFile({ name: file.name, content: extracted, status: 'ready' })
+      notify('✓', 'Perfil cargado — extrayendo estructura y competencias…')
+      // Fase 1: extracciones secuenciales (evita límite de concurrencia Netlify)
+      await extractProfileStructure(extracted, file.name)
+    } catch (e) {
+      setJobFile({ name: file.name, content: '', status: 'error' })
+      notify('✗', `Error: ${e.message}`, 'e')
+    }
+  }
+
+  async function callExtractAPI(systemPrompt, userContent) {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 3500,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }],
+      }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    const raw = data.content?.map(b => b.text || '').join('') || ''
+    const clean = raw.replace(/```json|```/g, '').trim()
+    try { return JSON.parse(clean) }
+    catch { const m = clean.match(/\{[\s\S]*\}/); if (m) return JSON.parse(m[0]); throw new Error('JSON inválido') }
+  }
+
+  async function extractProfileStructure(content, fileName) {
+    setProfileLoading(true)
+    try {
+      const parsed = await callExtractAPI(
+        PROMPT_EXTRACT_PROFILE,
+        `DOCUMENTO DE PERFIL DE CARGO (${fileName}):
+
+${content.slice(0, 4000)}`
+      )
+      setProfileData(parsed)
+      notify('✓', `Cuadro de perfil extraído — ${parsed.nombreCargo || 'cargo identificado'}`)
+    } catch (e) {
+      notify('⚠', `Estructura del perfil: ${e.message}`, 'w')
+    } finally {
+      setProfileLoading(false)
+      setLoadMsg('')
+    }
+  }
+
+  async function handleCvFiles(fileList) {
+    const files = Array.from(fileList)
+    if (!files.length) return
+    const placeholders = files.map(f => ({ name: f.name, content: '', status: 'loading' }))
+    setCvFiles(prev => {
+      const base = prev.length
+      const next = [...prev, ...placeholders]
+      Promise.all(files.map(async (file, i) => {
+        try {
+          const content = await extractText(file, () => {
+            setCvFiles(p => { const n = [...p]; n[base + i] = { ...n[base + i], status: 'ocr' }; return n })
+          })
+          setCvFiles(p => { const n = [...p]; n[base + i] = { name: file.name, content, status: 'ready' }; return n })
+        } catch {
+          setCvFiles(p => { const n = [...p]; n[base + i] = { name: file.name, content: '', status: 'error' }; return n })
+        }
+      })).then(() => notify('✓', `${files.length} CV(s) procesados`))
+      return next
+    })
+  }
+
+  async function callAnalyze(modeId, cvList) {
+    const modeLabel = MODES.find(m => m.id === modeId)?.label
+    let userPrompt = ''
+
+    if (profileData) {
+      userPrompt += `CUADRO RESUMEN ESTRUCTURADO DEL CARGO:\n${JSON.stringify(profileData, null, 2)}\n\n`
+      userPrompt += `PERFIL ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0, 1500)}\n\n`
+    } else {
+      userPrompt += `PERFIL DEL CARGO (${jobFile.name}):\n${jobFile.content.slice(0, 2000)}\n\n`
+    }
+
+    cvList.forEach((cv, i) => { userPrompt += `--- CV ${i + 1}: ${cv.name} ---\n${cv.content.slice(0, 1500)}\n\n` })
+
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 3500,
+        system: PROMPTS[modeId],
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    })
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}))
+      throw new Error(e?.error?.message || `HTTP ${res.status}`)
+    }
+    const data = await res.json()
+    const raw = data.content?.map(b => b.text || '').join('') || ''
+    const clean = raw.replace(/```json|```/g, '').trim()
+    // Intento de reparación si el JSON viene truncado
+    let repaired = clean
+    // Contar llaves y corchetes para detectar truncamiento
+    const openBraces   = (repaired.match(/\{/g) || []).length
+    const closeBraces  = (repaired.match(/\}/g) || []).length
+    const openBrackets = (repaired.match(/\[/g) || []).length
+    const closeBrackets= (repaired.match(/\]/g) || []).length
+    // Si está truncado, cerrar estructuras abiertas
+    if (openBraces !== closeBraces || openBrackets !== closeBrackets) {
+      // Truncar en el último objeto completo válido
+      const lastValidObj = repaired.lastIndexOf('},')
+      if (lastValidObj > 100) {
+        repaired = repaired.slice(0, lastValidObj + 1) + ']}' 
+      }
+    }
+    try { return JSON.parse(repaired) }
+    catch {
+      try {
+        const m = repaired.match(/\{[\s\S]*\}/)
+        if (m) return JSON.parse(m[0])
+      } catch {}
+      throw new Error('Respuesta de IA incompleta — intenta con menos CVs o un análisis más simple.')
+    }
+  }
+
+  const ready = cvFiles.filter(f => f.status === 'ready')
+  const currentMode = MODES.find(m => m.id === mode)
+  const totalCost = currentMode ? currentMode.cost * (mode === 'compare' ? ready.length : ready.length) : 0
+  const canAnalyze = jobFile?.status === 'ready' && ready.length > 0 && !loading
+
+  async function analyze() {
+    setError('')
+    if (credits < totalCost) { notify('⚠', `Necesitas ${totalCost} créditos`, 'e'); return }
+    setLoading(true)
+    setResults(null)
+    setCompareResults(null)
+
+    try {
+      if (mode === 'compare') {
+        // Secuencial para respetar límite de concurrencia de Netlify gratuito
+        setLoadMsg('Ejecutando análisis de perfil (1/3)…')
+        const profileData = await callAnalyze('profile', ready).catch(() => null)
+        setLoadMsg('Ejecutando análisis de competencias (2/3)…')
+        const compData    = await callAnalyze('competencies', ready).catch(() => null)
+        const fullData    = await callAnalyze('full', ready).catch(() => null)
+        setCompareResults({ profile: profileData, competencies: compData, full: fullData })
+        setActiveView('compare')
+      } else {
+        setLoadMsg(`Analizando ${ready.length} candidato(s)…`)
+        const parsed = await callAnalyze(mode, ready)
+        setResults({ candidates: parsed.candidates || [], mode })
+        setActiveView('results')
+      }
+      setCredits(c => c - totalCost)
+      notify('✓', `Análisis completado · ${totalCost} créditos`)
+    } catch (err) {
+      setError(err.message)
+      notify('✗', 'Error en el análisis', 'e')
+    } finally {
+      setLoading(false)
+      setLoadMsg('')
+    }
+  }
+
+  function exportCSV() {
+    if (!compareResults) return
+    const { profile, competencies, full } = compareResults
+    const allNames = [...new Set([
+      ...(profile?.candidates || []).map(c => c.name),
+      ...(competencies?.candidates || []).map(c => c.name),
+      ...(full?.candidates || []).map(c => c.name),
+    ])]
+    const rows = [['Candidato', 'Score Perfil', 'Recomendación', 'Resumen']]
+    allNames.forEach(name => {
+      const p  = profile?.candidates?.find(c => c.name === name)
+      const co = competencies?.candidates?.find(c => c.name === name)
+      const f  = full?.candidates?.find(c => c.name === name)
+      const scores = [p?.score, co?.score, f?.score].filter(s => s != null)
+      const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : ''
+      const reco = f?.recommendation || co?.recommendation || p?.recommendation || ''
+      const summary = f?.summary || p?.summary || ''
+      rows.push([name, p?.score ?? '', co?.score ?? '', f?.score ?? '', avg, reco, summary])
+    })
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `MatchViaGeperex_Comparativo_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click(); URL.revokeObjectURL(url)
+    notify('⬇', 'CSV exportado correctamente')
+  }
 
   function reset() {
-    setJobFile(null); setProfileData(null); setCvFiles([])
-    setResults(null); setCompareResults(null); setError(''); setActiveTab('resumen')
-    setActiveHistoryId(null)
-    if (jobRef.current) jobRef.current.value=''
-    if (cvRef.current) cvRef.current.value=''
-    notify('↺','Reiniciado')
+    setJobFile(null); setProfileData(null); setCompetencyDict(null); setCvFiles([])
+    setResults(null); setCompareResults(null)
+    setError(''); setActiveView('results')
+    if (jobRef.current) jobRef.current.value = ''
+    if (cvRef.current) cvRef.current.value = ''
+    notify('↺', 'Reiniciado')
   }
 
-  const hasResults = results||compareResults
-  const candidates = results?.candidates||[]
-  const analysisDate = new Date().toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
-
-  // Variables de modo inteligente
-  const ready       = cvFiles.filter(f=>f.status==='ready')
-  const smartMode   = ready.length >= 2 ? 'compare' : 'profile'
-  const smartLabel  = ready.length >= 2 ? 'Vista Comparativa' : 'Análisis de Perfil'
-  const smartIcon   = ready.length >= 2 ? '⚡' : '📋'
-  const smartCost   = (MODES.find(m=>m.id===smartMode)?.cost||2) * Math.max(ready.length,1)
-  const smartDesc   = ready.length >= 2
-    ? `${ready.length} candidatos — ranking curricular comparativo`
-    : '1 candidato — análisis curricular contra el perfil'
-  const effectiveMode = showAdvanced ? mode : smartMode
-  const totalCost   = showAdvanced
-    ? (MODES.find(m=>m.id===mode)?.cost||2) * Math.max(ready.length,1)
-    : smartCost
-  const canAnalyze  = jobFile?.status==='ready' && ready.length>0 && !loading
-
-  const LOAD_STEPS = {
-    profile: ['Procesando documentos','Contrastando perfil','Generando evaluación'],
-    compare: ['Analizando candidatos','Generando ranking','Completando comparativa'],
-  }
-  const steps   = LOAD_STEPS[effectiveMode] || LOAD_STEPS.profile
-  const stepIdx = Math.max(0, steps.findIndex(s=>loadMsg.toLowerCase().includes(s.split(' ')[0].toLowerCase())))
-
-  // ─── RENDER ─────────────────────────────────────────────────────────────────
+  // ─── RENDER ───────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{CSS}</style>
-      <div className="shell">
+      {/* BG */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+        background: C.bg }} />
 
-        {/* ══ SIDEBAR NAVY ══════════════════════════════════════════════════════ */}
-        <aside className="sidebar">
-
-          {/* Logo */}
-          <div className="sb-header">
-            <div className="sb-logo">G</div>
-            <div style={{ fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:13,color:C.sidebarText }}>
-              #MatchVia<span style={{ color:C.accent }}>Geperex</span>
+      {/* HEADER */}
+      <header style={{ position: 'sticky', top: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 54, background: 'rgba(6,8,16,.9)', backdropFilter: 'blur(16px)', borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 13, color: '#000', boxShadow: `0 0 16px ${C.accent}40` }}>G</div>
+          <div>
+            <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 15 }}>
+              <span style={{ color: C.accent }}>#</span>Match<span style={{ color: C.muted, fontWeight: 300 }}>Via</span>Geperex
             </div>
-          </div>
-
-          {/* Step 1 — Perfil */}
-          <div className="sb-section">
-            <div className="sb-section-title">
-              <div className="sb-step navy">1</div>
-              <div>
-                <div className="sb-label">Perfil del Cargo</div>
-                <div className="sb-sublabel">Define el perfil objetivo</div>
-              </div>
-              {profileData&&!profileLoading&&(
-                <span style={{ marginLeft:'auto',fontSize:9,fontWeight:700,color:C.greenLt,background:'rgba(34,160,90,.15)',border:'1px solid rgba(34,160,90,.3)',borderRadius:100,padding:'2px 8px',fontFamily:"'DM Mono'",flexShrink:0 }}>LISTO</span>
-              )}
-            </div>
-            {!jobFile ? (
-              <DropZone icon="📄" label="Subir Perfil de Cargo" hint="PDF, DOCX o TXT" multiple={false} onFiles={handleJobFiles} inputRef={jobRef}/>
-            ) : (
-              <SbFileItem name={jobFile.name} status={jobFile.status} onRemove={()=>{ setJobFile(null); setProfileData(null); if(jobRef.current)jobRef.current.value='' }}/>
-            )}
-            {profileLoading&&(
-              <div style={{ display:'flex',alignItems:'center',gap:6,marginTop:6 }}>
-                <div className="spinner" style={{ width:10,height:10,borderWidth:1.5 }}/>
-                <span style={{ fontSize:9,color:C.sidebarMuted,fontFamily:"'DM Mono'" }}>Extrayendo estructura…</span>
-              </div>
-            )}
-            {profileData&&!profileLoading&&(
-              <div style={{ fontSize:9,color:C.greenLt,fontFamily:"'DM Mono'",marginTop:4 }}>✓ Estructura extraída</div>
-            )}
-          </div>
-
-          {/* Step 2 — CVs */}
-          <div className="sb-section">
-            <div className="sb-section-title">
-              <div className="sb-step" style={{ background:C.accent }}>2</div>
-              <div>
-                <div className="sb-label">Candidatos</div>
-                <div className="sb-sublabel">Sube los CVs a analizar</div>
-              </div>
-              {cvFiles.length>0&&(
-                <span style={{ marginLeft:'auto',fontSize:9,fontWeight:700,color:C.accent,background:'rgba(201,133,58,.15)',border:'1px solid rgba(201,133,58,.3)',borderRadius:100,padding:'2px 8px',fontFamily:"'DM Mono'",flexShrink:0 }}>{cvFiles.length} archivos</span>
-              )}
-            </div>
-            <DropZone icon="👥" label="Subir CVs" hint="PDF, DOCX o TXT" multiple={true} onFiles={handleCvFiles} inputRef={cvRef}/>
-            {cvFiles.length>0&&(
-              <div style={{ marginTop:8,display:'flex',flexDirection:'column',gap:0,maxHeight:120,overflowY:'auto' }}>
-                {cvFiles.map((cv,i)=>(
-                  <SbFileItem key={i} name={cv.name} status={cv.status} onRemove={()=>setCvFiles(p=>p.filter((_,j)=>j!==i))}/>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Step 3 — Modo inteligente automático */}
-          {!showAdvanced ? (
-            // ── MODO AUTOMÁTICO (default) ──
-            <div className="sb-section">
-              <div className="sb-section-title">
-                <div className="sb-step navy">3</div>
-                <div>
-                  <div className="sb-label">Análisis</div>
-                  <div className="sb-sublabel">Modo automático activo</div>
-                </div>
-              </div>
-              {/* Card del modo detectado */}
-              <div style={{
-                background:'rgba(255,255,255,.05)',
-                border:`1px solid ${C.accent}40`,
-                borderRadius:9, padding:'11px 12px',
-                marginBottom:8,
-              }}>
-                <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:4 }}>
-                  <span style={{ fontSize:16 }}>{smartIcon}</span>
-                  <span style={{ fontSize:12,fontWeight:700,color:C.sidebarText }}>{smartLabel}</span>
-                  <span style={{ marginLeft:'auto',fontFamily:"'DM Mono'",fontSize:10,fontWeight:700,
-                    color:C.accent,background:'rgba(201,133,58,.15)',border:'1px solid rgba(201,133,58,.3)',
-                    borderRadius:100,padding:'2px 8px',flexShrink:0 }}>
-                    {smartCost} cr
-                  </span>
-                </div>
-                <div style={{ fontSize:10,color:C.sidebarMuted,lineHeight:1.5 }}>
-                  {ready.length === 0
-                    ? 'Sube CVs para ver qué análisis se ejecutará'
-                    : smartDesc
-                  }
-                </div>
-                {ready.length > 0 && (
-                  <div style={{ marginTop:8,display:'flex',alignItems:'center',gap:5,
-                    fontSize:9,color:C.greenLt,fontFamily:"'DM Mono'" }}>
-                    <span>✓</span>
-                    {ready.length===1
-                      ? '1 CV detectado → Análisis de Perfil'
-                      : `${ready.length} CVs detectados → Vista Comparativa`
-                    }
-                  </div>
-                )}
-              </div>
-              {/* Enlace personalizar */}
-              <button onClick={()=>setShowAdvanced(true)} style={{
-                background:'none',border:'none',cursor:'pointer',
-                fontSize:10,color:C.sidebarMuted,fontFamily:"'DM Sans'",
-                display:'flex',alignItems:'center',gap:4,padding:'2px 0',
-                transition:'color .15s',
-              }}>
-                <span style={{ fontSize:10 }}>⚙</span> Personalizar análisis
-              </button>
-            </div>
-          ) : (
-            // ── MODO AVANZADO (personalizado) ──
-            <div className="sb-section">
-              <div className="sb-section-title">
-                <div className="sb-step navy">3</div>
-                <div>
-                  <div className="sb-label">Tipo de Análisis</div>
-                  <div className="sb-sublabel">Modo personalizado</div>
-                </div>
-                <button onClick={()=>setShowAdvanced(false)} style={{
-                  marginLeft:'auto',background:'none',border:'none',cursor:'pointer',
-                  fontSize:9,color:C.accent,fontFamily:"'DM Mono'",fontWeight:700,
-                  padding:'2px 6px',flexShrink:0,
-                }}>← Auto</button>
-              </div>
-              {MODES.map(m=>(
-                <div key={m.id}
-                  className={`mode-item${mode===m.id?' active':''}`}
-                  onClick={()=>setMode(m.id)}
-                  style={{ position:'relative' }}
-                  title={m.tooltip}
-                >
-                  <div className={`mode-radio${mode===m.id?' on':''}`}/>
-                  <div style={{ flex:1,minWidth:0 }}>
-                    <div style={{ display:'flex',alignItems:'center',gap:5 }}>
-                      <span style={{ fontSize:13 }}>{m.icon}</span>
-                      <span className="mode-label">{m.label}</span>
-                    </div>
-                    <div className="mode-sub">{m.desc}</div>
-                  </div>
-                  <span className="mode-cost">{m.cost}cr</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* CTA */}
-          <div className="cta-wrap">
-            <button className="cta-btn" onClick={analyze} disabled={!canAnalyze||loading}>
-              {loading ? (
-                <>
-                  <div className="spinner" style={{ width:16,height:16,borderWidth:2,borderColor:'rgba(255,255,255,.3)',borderTopColor:'#fff' }}/>
-                  Analizando…
-                </>
-              ) : canAnalyze ? (
-                <>{smartIcon} Analizar {ready.length > 1 ? `${ready.length} Candidatos` : 'Candidato'}</>
-              ) : (
-                <>🚀 Analizar Candidatos</>
-              )}
-            </button>
-            {canAnalyze&&!loading&&(
-              <div className="cta-sub">
-                {showAdvanced
-                  ? `Modo: ${MODES.find(m=>m.id===mode)?.label} · ${totalCost} cr`
-                  : `${smartLabel} · ${totalCost} cr`
-                }
-              </div>
-            )}
-            <button className="reset-btn" onClick={reset}>↺ Nuevo proceso</button>
-            {error&&(
-              <div style={{ marginTop:8,background:'rgba(185,28,28,.15)',border:'1px solid rgba(185,28,28,.3)',borderRadius:8,padding:'8px 10px',fontSize:10,color:'#FCA5A5',lineHeight:1.5 }}>⚠ {error}</div>
-            )}
-          </div>
-
-          {/* Historial de sesión */}
-          {history.length > 0 && (
-            <div className="sb-section" style={{ padding:'10px 14px' }}>
-              <div style={{ fontSize:9,fontWeight:700,color:C.sidebarMuted,textTransform:'uppercase',letterSpacing:'.08em',fontFamily:"'DM Mono'",marginBottom:8,display:'flex',alignItems:'center',gap:5 }}>
-                🕓 Análisis de esta sesión
-              </div>
-              <div style={{ display:'flex',flexDirection:'column',gap:4,maxHeight:160,overflowY:'auto' }}>
-                {history.map(item=>(
-                  <button key={item.id}
-                    onClick={()=>loadFromHistory(item)}
-                    style={{
-                      width:'100%',textAlign:'left',padding:'7px 9px',
-                      borderRadius:7,border:`1px solid ${activeHistoryId===item.id ? C.accent+'60' : C.sidebarDim}`,
-                      background: activeHistoryId===item.id ? 'rgba(201,133,58,.12)' : 'rgba(255,255,255,.03)',
-                      cursor:'pointer',transition:'all .15s',
-                    }}
-                  >
-                    <div style={{ fontSize:10,fontWeight:600,color:activeHistoryId===item.id ? C.accent : C.sidebarText,
-                      whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>
-                      {item.mode==='compare' ? '⚡' : '📋'} {item.label}
-                    </div>
-                    <div style={{ fontSize:9,color:C.sidebarMuted,fontFamily:"'DM Mono'",marginTop:2 }}>{item.date}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Security note */}
-          <div className="sb-security">
-            🔒 Tus datos están protegidos y son confidenciales
-          </div>
-
-        </aside>
-
-        {/* ══ CONTENT ═══════════════════════════════════════════════════════════ */}
-        <div className="content">
-
-          {/* Top bar */}
-          <div className="topbar">
-            <div className="topbar-brand">MatchViaGeperex</div>
-            <div className="topbar-version">v8.0</div>
-            <div className="topbar-credits">🏅 {credits} créditos disponibles</div>
-            <button className="topbar-btn" onClick={()=>setModal(true)}>?</button>
-            <div className="topbar-user">
-              <div className="topbar-avatar">G</div>
-              <div style={{ display:'flex',flexDirection:'column' }}>
-                <span style={{ fontSize:11,fontWeight:700,color:C.text }}>Geperex Limitada</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs + Export — solo cuando hay resultados */}
-          {hasResults&&(
-            <div className="result-hd">
-              <div className="tabs" style={{ flex:1,border:'none',borderBottom:'none' }}>
-                {TABS.filter(t=>{
-                  // Si solo hay compareResults, mostrar SOLO la tab comparativa
-                  if (!results && compareResults) return t.id === 'comparativa'
-                  // Si hay results, mostrar todas menos comparativa (a menos que también haya compareResults)
-                  if (t.id === 'comparativa') return !!compareResults
-                  return true
-                }).map(t=>(
-                  <button key={t.id}
-                    className={`tab-btn${activeTab===t.id?' active':''}`}
-                    onClick={()=>setActiveTab(t.id)}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ display:'flex',gap:8,flexShrink:0 }}>
-                <button className="export-btn" onClick={()=>window.print()}>📄 Exportar PDF</button>
-                <button className="export-btn" onClick={exportCSV}>📊 Exportar CSV</button>
-              </div>
-            </div>
-          )}
-
-          {/* Main content */}
-          <div className="main-content">
-
-            {/* Loading */}
-            {loading&&(
-              <div className="loading-box">
-                <div className="spinner" style={{ margin:'0 auto' }}/>
-                <div className="loading-title">Procesando análisis</div>
-                <div className="loading-sub">{loadMsg||'Iniciando…'}</div>
-                <div className="progress-steps">
-                  {steps.map((s,i)=>(
-                    <div key={i} className={`ps-item ${i<stepIdx?'done':i===stepIdx?'active':'pending'}`}>
-                      <span>{i<stepIdx?'✓':i===stepIdx?'›':'○'}</span>{s}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── RESULTADOS ── */}
-            {!loading&&hasResults&&(
-              <>
-                {/* Banner análisis completado */}
-                {results&&activeTab==='resumen'&&(
-                  <div className="analysis-banner">
-                    <div className="banner-icon">📋</div>
-                    <div style={{ flex:1 }}>
-                      <div className="banner-title">ANÁLISIS COMPLETADO</div>
-                      <div className="banner-meta">
-                        <div className="bm-item"><span className="bm-label">Perfil analizado</span><span className="bm-val">{profileData?.nombreCargo||jobFile?.name||'—'}</span></div>
-                        <div className="bm-item"><span className="bm-label">Candidatos</span><span className="bm-val">{candidates.length}</span></div>
-                        <div className="bm-item"><span className="bm-label">Fecha</span><span className="bm-val">{analysisDate}</span></div>
-                        <div className="bm-item"><span className="bm-label">Tipo</span><span className="bm-val">{MODES.find(m=>m.id===results.mode)?.label}</span></div>
-
-                      </div>
-                    </div>
-                    <div style={{ display:'flex',flexDirection:'column',gap:6,alignItems:'flex-end',flexShrink:0 }}>
-                      <div className="banner-badge">IA + Criterio Experto</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── ESTADOS INFORMATIVOS: tabs sin contenido cuando solo hay Vista Comparativa ── */}
-                {!results && compareResults && activeTab !== 'comparativa' && (
-                  <div style={{
-                    display:'flex', flexDirection:'column', alignItems:'center',
-                    justifyContent:'center', minHeight:'50vh', textAlign:'center', padding:'0 32px'
-                  }}>
-                    {/* Icono según tab */}
-                    <div style={{
-                      width:72, height:72, borderRadius:16,
-                      background: activeTab==='resumen' ? C.accentDim : `rgba(26,122,69,.08)`,
-                      border:`1px solid ${activeTab==='resumen' ? C.accent+'30' : C.green+'25'}`,
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      fontSize:30, marginBottom:20,
-                    }}>
-                      {activeTab==='resumen' ? '📋' : '🔍'}
-                    </div>
-
-                    <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:18, color:C.navy, marginBottom:8 }}>
-                      {activeTab==='resumen'  && 'Vista de Resumen no disponible'}
-
-                      {activeTab==='detalle'  && 'Vista de Detalle no disponible'}
-                    </div>
-
-                    <div style={{ color:C.muted, fontSize:13, maxWidth:380, lineHeight:1.7, marginBottom:24 }}>
-                      {activeTab==='resumen' && (
-                        <>
-                          Ejecutaste una <strong style={{ color:C.navy }}>Vista Comparativa</strong>. Para ver el resumen individual de un candidato, ejecuta un <strong style={{ color:C.accent }}>Análisis de Perfil</strong>.
-                        </>
-                      )}
-                      {activeTab==='detalle' && (
-                        <>
-                          Esta vista muestra el detalle curricular completo. Para acceder, ejecuta un <strong style={{ color:C.accent }}>Análisis de Perfil</strong>.
-                        </>
-                      )}
-                    </div>
-
-                    {/* Botón para ir a comparativa */}
-                    <button
-                      onClick={()=>setActiveTab('comparativa')}
-                      style={{
-                        padding:'10px 24px', borderRadius:9,
-                        background:C.navy, color:'#fff', border:'none',
-                        fontFamily:"'DM Sans'", fontWeight:700, fontSize:13,
-                        cursor:'pointer', transition:'all .2s',
-                        boxShadow:`0 4px 16px rgba(27,42,74,.25)`,
-                        display:'flex', alignItems:'center', gap:8,
-                      }}
-                    >
-                      ⚡ Ver Vista Comparativa
-                    </button>
-
-                    {/* Sugerencia secundaria */}
-                    <div style={{ marginTop:16, fontSize:11, color:C.dim, fontFamily:"'DM Mono'" }}>
-                      O selecciona otro tipo de análisis en el panel izquierdo y presiona Analizar
-                    </div>
-                  </div>
-                )}
-
-                {/* Tab: Resumen Ejecutivo */}
-                {activeTab==='resumen'&&results&&(
-                  <>
-                    <div className="candidates-grid" style={{
-                      gridTemplateColumns: candidates.length===1
-                        ? '1fr'
-                        : candidates.length===2
-                          ? '1fr 1fr'
-                          : 'repeat(auto-fill,minmax(300px,1fr))'
-                    }}>
-                      {candidates.map((c,i)=><CandidateCard key={i} candidate={c} idx={i} tab={activeTab}/>)}
-                    </div>
-                    {/* Panel inferior: radar + recomendación */}
-                    {candidates.length>1&&(
-                      <div className="bottom-grid">
-                        {/* Radares */}
-                        {candidates.filter(c=>c.competencies&&Object.keys(c.competencies).length>0).slice(0,2).map((c,i)=>(
-                          <div key={i} className="bp">
-                            <div className="bp-title">Radar — {c.name}</div>
-                          </div>
-                        ))}
-                        {/* Recomendación del top candidato */}
-                        {candidates[0]&&(
-                          <div className="rec-exec">
-                            <div className="bp-title">Recomendación Ejecutiva</div>
-                            <div style={{ fontSize:22,marginBottom:8 }}>🏆</div>
-                            <div className="rec-winner">{candidates[0].name}</div>
-                            <span className="reco-badge" style={{ color:RECO[candidates[0].recommendation]?.color||C.green,background:RECO[candidates[0].recommendation]?.bg||C.greenDim,borderColor:RECO[candidates[0].recommendation]?.border||C.greenLt,marginBottom:10,display:'inline-flex' }}>
-                              {RECO[candidates[0].recommendation]?.label||'RECOMENDADO'}
-                            </span>
-                            <div style={{ fontSize:12,color:C.muted,lineHeight:1.7,marginBottom:14 }}>
-                              {candidates[0].executiveSummary||candidates[0].summary}
-                            </div>
-                            <div className="rec-conf-grid">
-                              {[['Confianza análisis','ALTA'],['Nivel de ajuste','ÓPTIMO'],['Riesgo de rotación','BAJO']].map(([l,v])=>(
-                                <div key={l} className="rec-conf-item">
-                                  <div className="rec-conf-label">{l}</div>
-                                  <div className="rec-conf-val" style={{ color:C.green }}>{v}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-                {/* Tab: Detalle */}
-                {activeTab==='detalle'&&results&&(
-                  <div>
-                    {profileData&&<ProfileCard profile={profileData}/>}
-                    <div style={{
-                      display:'grid', gap:16,
-                      gridTemplateColumns: candidates.length===1
-                        ? '1fr'
-                        : candidates.length===2
-                          ? '1fr 1fr'
-                          : 'repeat(auto-fill,minmax(300px,1fr))'
-                    }}>
-                      {candidates.map((c,i)=><CandidateCard key={i} candidate={c} idx={i} tab="detalle"/>)}
-                    </div>
-                  </div>
-                )}
-
-                {/* Tab: Comparativa */}
-                {activeTab==='comparativa'&&compareResults&&(
-                  <ComparativePanel compareResults={compareResults} onExportCSV={exportCSV}/>
-                )}
-              </>
-            )}
-
-            {/* Estado vacío */}
-            {!loading&&!hasResults&&(
-              <div className="empty-state">
-                <div className="empty-icon">◈</div>
-                <div className="empty-title">Listo para analizar</div>
-                <div className="empty-sub">Sube el perfil del cargo y los CVs desde el panel izquierdo, selecciona el tipo de análisis y presiona Analizar.</div>
-                <div className="empty-pills">
-                  {[{label:'Análisis de Perfil',col:C.navy},{label:'Vista Comparativa',col:C.amber}].map(({label,col})=>(
-                    <span key={label} className="empty-pill" style={{ color:col,borderColor:`${col}30`,background:`${col}08` }}>{label}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </div>
-
-          {/* Footer */}
-          <div className="page-footer">
-            <span>Geperex Limitada · RUT 78.110.793-K · Todos los derechos reservados</span>
-            <span>Powered by <strong style={{ color:C.navy }}>Geperex Intelligence</strong> 🧠</span>
+            <div style={{ fontFamily: "'DM Mono'", fontSize: 9, color: C.dim, letterSpacing: '.1em' }}>GEPEREX LIMITADA · RUT 78.110.793-K</div>
           </div>
         </div>
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontFamily: "'DM Mono'", fontSize: 12, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '5px 13px', fontWeight: 700 }}>
+            ⬡ {credits} créditos
+          </div>
+          <button onClick={() => setModal(true)} style={{ padding: '5px 13px', borderRadius: 100, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans'", fontWeight: 600 }}>+ Comprar</button>
+        </div>
+      </header>
 
-      {/* Modal créditos */}
-      {modal&&(
-        <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget)setModal(false) }}>
-          <div className="modal-box">
-            <div style={{ fontFamily:"'Syne'",fontWeight:700,fontSize:18,marginBottom:6,color:C.navy }}>Recargar Créditos</div>
-            <div style={{ color:C.muted,fontSize:12,lineHeight:1.6,marginBottom:18 }}>Selecciona el paquete para tu proceso de selección.</div>
-            <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16 }}>
-              {[[50,'$4.990'],[150,'$12.990'],[500,'$34.990']].map(([amt,price])=>(
-                <div key={amt} className="credit-card" onClick={()=>{ setCredits(c=>c+amt); setModal(false); notify('⬡',`+${amt} créditos añadidos`) }}>
-                  <div style={{ fontFamily:"'DM Mono'",fontWeight:700,fontSize:24,color:C.accent }}>{amt}</div>
-                  <div style={{ fontSize:9,color:C.dim,marginTop:1,fontFamily:"'DM Mono'" }}>créditos</div>
-                  <div style={{ fontSize:12,color:C.muted,marginTop:6,fontWeight:500 }}>{price}</div>
+      {/* MAIN */}
+      <main style={{ position: 'relative', zIndex: 5, maxWidth: 1100, margin: '0 auto', padding: '36px 18px 80px' }}>
+        {/* Hero */}
+        <div className="fade-up" style={{ marginBottom: 34, textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(79,125,243,0.08)', border: `1px solid rgba(79,125,243,0.2)`, borderRadius: 100, padding: '4px 14px', fontSize: 10, color: C.accent, fontFamily: "'DM Mono'", letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 14 }}>
+            ◈ Motor de Selección IA + OCR · v2.0
+          </div>
+          <h1 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 'clamp(1.9rem,5vw,3rem)', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 12 }}>
+            <span style={{ color: C.accent }}>#</span>Match<em style={{ fontStyle: 'italic', color: C.muted, fontWeight: 300 }}>Via</em><span style={{ color: '#8AAAF7' }}>Geperex</span>
+          </h1>
+          <p style={{ color: C.muted, fontSize: 14, maxWidth: 480, margin: '0 auto', lineHeight: 1.7, fontWeight: 300 }}>
+            Tres modos de análisis con <strong style={{ color: C.text, fontWeight: 500 }}>prompts especializados</strong> + <strong style={{ color: C.purple, fontWeight: 500 }}>Vista Comparativa Cross-Modal</strong> con radar charts y exportación CSV.
+          </p>
+        </div>
+
+        {/* Workflow grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 14 }}>
+          {/* Step 1 */}
+          <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.05s' }}>
+            <StepHeader n="1" label="Perfil del Puesto" />
+            <DropZone icon="📄" label="Subir Perfil" hint=".txt · .pdf · .docx" multiple={false} onFiles={handleJobFiles} inputRef={jobRef} />
+            {jobFile && (
+              <div style={{ marginTop: 8 }}>
+                <FileItem name={jobFile.name} status={jobFile.status} onRemove={() => { setJobFile(null); if (jobRef.current) jobRef.current.value = '' }} />
+                {jobFile.status === 'loading' && loadMsg && <div style={{ fontSize: 10, color: C.amber, marginTop: 4 }}>⟳ {loadMsg}</div>}
+              </div>
+            )}
+          </div>
+
+          {/* Step 2 */}
+          <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.1s' }}>
+            <StepHeader n="2" label="CVs Candidatos" />
+            <DropZone icon="👥" label="Subir CVs" hint=".txt · .pdf · .docx · Múltiples" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
+            {cvFiles.length > 0 && (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 200, overflowY: 'auto' }}>
+                {cvFiles.map((cv, i) => <FileItem key={i} name={cv.name} status={cv.status} onRemove={() => setCvFiles(p => p.filter((_, j) => j !== i))} />)}
+              </div>
+            )}
+          </div>
+
+          {/* Step 3 */}
+          <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.15s' }}>
+            <StepHeader n="3" label="Tipo de Análisis" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
+              {MODES.map(m => (
+                <button key={m.id} onClick={() => setMode(m.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: mode === m.id ? `${m.color}12` : 'transparent', border: `1px solid ${mode === m.id ? m.color + '50' : C.border}`, borderRadius: 8, cursor: 'pointer', transition: 'all .2s', fontFamily: "'DM Sans'", fontSize: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span>{m.icon}</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ color: mode === m.id ? m.color : C.text, fontWeight: 600 }}>{m.label}</div>
+                      <div style={{ fontSize: 10, color: C.dim, marginTop: 1 }}>{m.desc}</div>
+                    </div>
+                  </div>
+                  <span style={{ fontFamily: "'DM Mono'", fontSize: 10, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '2px 7px', fontWeight: 700, flexShrink: 0 }}>{m.cost}cr</span>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 7 }}>
+              <button onClick={analyze} disabled={!canAnalyze} style={{ flex: 1, padding: '9px', borderRadius: 8, border: 'none', background: canAnalyze ? C.accent : C.surface, color: canAnalyze ? '#fff' : C.dim, fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13, cursor: canAnalyze ? 'pointer' : 'not-allowed', opacity: canAnalyze ? 1 : .5, transition: 'all .2s', boxShadow: canAnalyze ? `0 4px 16px ${C.accent}30` : 'none' }}>
+                {loading ? '⟳ Analizando…' : '◈ Analizar'}
+              </button>
+              <button onClick={reset} style={{ padding: '9px 13px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'DM Sans'", fontSize: 13, fontWeight: 600 }}>↺</button>
+            </div>
+            {canAnalyze && (
+              <div style={{ marginTop: 8, fontSize: 11, color: C.dim, textAlign: 'center' }}>
+                Costo: <span style={{ color: C.gold, fontWeight: 700 }}>{totalCost} créditos</span>
+                {mode === 'compare' && <span style={{ color: C.muted }}> · 3 análisis paralelos</span>}
+              </div>
+            )}
+            {error && <div style={{ marginTop: 10, background: C.redDim, border: `1px solid ${C.red}30`, borderRadius: 8, padding: '10px 12px', fontSize: 12, color: C.red, lineHeight: 1.5 }}>⚠ {error}</div>}
+          </div>
+        </div>
+
+        {/* Results area */}
+        <div style={{ marginTop: 32 }}>
+
+          {/* ── PROFILE CARD: cuadro estructurado (siempre visible tras cargar perfil) */}
+          {(profileData || profileLoading) && (
+            <div style={{ marginBottom: 12 }}>
+              <ProfileCard profile={profileData} loading={profileLoading} />
+            </div>
+          )}
+
+
+
+
+          {(results || compareResults) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+              {results && (
+                <button onClick={() => setActiveView('results')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'results' ? C.accent : C.border}`, background: activeView === 'results' ? C.accentDim : 'transparent', color: activeView === 'results' ? C.accent : C.muted, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  📋 Resultados
+                </button>
+              )}
+              {compareResults && (
+                <button onClick={() => setActiveView('compare')} style={{ padding: '7px 16px', borderRadius: 7, border: `1px solid ${activeView === 'compare' ? C.purple : C.border}`, background: activeView === 'compare' ? C.purpleDim : 'transparent', color: activeView === 'compare' ? C.purple : C.muted, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  ⚡ Vista Comparativa
+                </button>
+              )}
+            </div>
+          )}
+
+          {loading && (
+            <div className="glow-card" style={{ padding: '48px 28px', textAlign: 'center' }}>
+              <div className="spinner" style={{ margin: '0 auto 16px' }} />
+              <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{loadMsg || 'Procesando…'}</div>
+              {mode === 'compare' && <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados ejecutándose en paralelo</div>}
+            </div>
+          )}
+
+          {!loading && activeView === 'results' && results && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ marginBottom: 6 }}>
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20 }}>
+                  {MODES.find(m => m.id === results.mode)?.label}
+                </h2>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{results.candidates.length} candidato(s) evaluado(s)</div>
+              </div>
+              {results.candidates.map((c, i) => <CandidateCard key={i} candidate={c} idx={i} />)}
+            </div>
+          )}
+
+          {!loading && activeView === 'compare' && compareResults && (
+            <div>
+              <div style={{ marginBottom: 20 }}>
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Vista Comparativa Cross-Modal</h2>
+                <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados · Comparación matricial · Radar charts · Exportación CSV</div>
+              </div>
+              <ComparativePanel compareResults={compareResults} onExportCSV={exportCSV} />
+            </div>
+          )}
+
+          {!loading && !results && !compareResults && (
+            <div style={{ textAlign: 'center', padding: '52px 24px', background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 14 }}>
+              <div style={{ fontSize: 40, opacity: .2, marginBottom: 14 }}>◈</div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, color: C.muted, marginBottom: 8 }}>Sin resultados aún</div>
+              <div style={{ color: C.dim, fontSize: 13, maxWidth: 380, margin: '0 auto', lineHeight: 1.7 }}>
+                Sube archivos, elige análisis y presiona <strong style={{ color: C.text }}>Analizar</strong>.<br />
+                Para la <strong style={{ color: C.purple }}>Vista Comparativa ⚡</strong>, selecciona ese modo.<br /><br />
+                <span style={{ fontSize: 11, color: C.accent }}>✓ OCR activo · 3 prompts especializados · Radar SVG · CSV exportable</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* FOOTER */}
+      <footer style={{ position: 'relative', zIndex: 5, textAlign: 'center', padding: '18px 24px', borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.dim }}>
+        © {new Date().getFullYear()} <strong style={{ color: C.muted }}>Geperex Limitada</strong> · RUT 78.110.793-K · #MatchViaGeperex · Powered by Claude AI
+      </footer>
+
+      {/* MODAL */}
+      {modal && (
+        <div onClick={e => { if (e.target === e.currentTarget) setModal(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,16,.87)', backdropFilter: 'blur(10px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+          <div className="glow-card" style={{ padding: 28, maxWidth: 370, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>⬡ Comprar Créditos</div>
+            <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.6, marginBottom: 20, fontWeight: 300 }}>Elige el paquete para tus procesos de selección.</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 18 }}>
+              {[[50,'$4.990'],[150,'$12.990'],[500,'$34.990']].map(([amt, price]) => (
+                <div key={amt} onClick={() => { setCredits(c => c + amt); setModal(false); notify('⬡', `+${amt} créditos añadidos`) }}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 10px', textAlign: 'center', cursor: 'pointer', transition: 'border-color .2s' }}>
+                  <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 22, color: C.gold }}>{amt}</div>
+                  <div style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>créditos</div>
+                  <div style={{ fontSize: 13, color: C.muted, marginTop: 6, fontWeight: 500 }}>{price}</div>
                 </div>
               ))}
             </div>
-            <button onClick={()=>setModal(false)} style={{ width:'100%',padding:'9px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.muted,cursor:'pointer',fontFamily:"'DM Sans'",fontWeight:600,fontSize:12 }}>Cerrar</button>
+            <button onClick={() => setModal(false)} style={{ width: '100%', padding: '9px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: "'DM Sans'", fontWeight: 600 }}>Cerrar</button>
           </div>
         </div>
       )}
 
-      {/* Toast */}
-      {toast&&(
-        <div className="toast" style={{ background:toast.type==='e'?C.red:C.navy }}>
-          <span>{toast.icon}</span><span style={{ fontSize:12 }}>{toast.msg}</span>
+      {/* TOAST */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 20, right: 20, background: C.card, border: `1px solid ${toast.type === 's' ? C.green + '40' : C.red + '40'}`, borderRadius: 10, padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: C.text, zIndex: 300, boxShadow: '0 8px 40px rgba(0,0,0,.6)', maxWidth: 320, animation: 'slideIn .3s ease' }}>
+          <span>{toast.icon}</span><span>{toast.msg}</span>
         </div>
       )}
     </>
+  )
+}
+
+// ─── STEP HEADER (inline helper) ─────────────────────────────────────────────
+function StepHeader({ n, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+      <div style={{ width: 22, height: 22, borderRadius: 6, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: "'DM Mono'", flexShrink: 0 }}>{n}</div>
+      <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13 }}>{label}</div>
+    </div>
   )
 }
