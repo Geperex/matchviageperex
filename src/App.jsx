@@ -36,125 +36,23 @@ const C = {
 }
 
 // ─── PROMPT: EXTRACCIÓN ESTRUCTURADA DEL PERFIL (Fase 1) ─────────────────────
-const PROMPT_EXTRACT_PROFILE = `Eres un analista experto en diseño de perfiles de cargo para sectores de alta exigencia en Chile (Minería, Energía, Sector Público). Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
+const PROMPT_EXTRACT_PROFILE = `Eres un analista experto en perfiles de cargo para el sector público y privado en Chile. Metodología: #MatchViaGeperex.
 
-TAREA: Lee el documento de perfil de cargo y extrae su estructura de forma completa y ordenada.
-Si algún campo no está presente en el documento, usa null.
+TAREA: Lee el documento completo y extrae toda la información estructurada del cargo.
+
+IMPORTANTE para el campo "competencias": busca en TODO el documento secciones como "Competencias Relevantes", "IV.- Competencias", "Perfil Conductual", tablas con columnas NIVEL/COMPETENCIA/COMPORTAMIENTOS, o listas de habilidades. Extrae el NOMBRE de cada competencia (ej: "Integridad", "Trabajo Colaborativo", "Gestión y Logro de Resultados"). Si hay competencias transversales Y específicas, incluye TODAS.
 
 Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
-{
-  "nombreCargo": "Título exacto del cargo",
-  "area": "Área o Gerencia a la que reporta",
-  "dependencia": "Cargo al que reporta directamente",
-  "mision": "Misión o propósito del cargo, tal como aparece en el documento (1-3 oraciones)",
-  "funciones": [
-    "Función principal 1",
-    "Función principal 2",
-    "Función principal 3"
-  ],
-  "estudios": {
-    "nivelRequerido": "Ej: Título profesional universitario / Técnico nivel superior / Enseñanza Media",
-    "carrerasAceptadas": ["Carrera 1", "Carrera 2"],
-    "requisitosAdicionales": "Ej: Colegiatura vigente, habilitación profesional, etc."
-  },
-  "experiencia": {
-    "generalAnios": "Ej: 5 años en cargos similares",
-    "especifica": [
-      "Experiencia específica requerida 1",
-      "Experiencia específica requerida 2"
-    ],
-    "sectoresDeseados": ["Sector 1", "Sector 2"]
-  },
-  "competencias": [
-    "Competencia o habilidad clave 1",
-    "Competencia o habilidad clave 2"
-  ],
-  "conocimientosTecnicos": [
-    "Software/sistema/herramienta 1",
-    "Conocimiento técnico 2"
-  ],
-  "idiomas": "Ej: Inglés nivel intermedio / No requerido",
-  "condicionesEspeciales": [
-    "Ej: Disponibilidad para trabajar en faena",
-    "Ej: Licencia clase B vigente"
-  ],
-  "remuneracion": "Si está especificada, indicarla; si no, null",
-  "jornada": "Ej: Jornada completa / Turno 7x7 / Part-time",
-  "lugarTrabajo": "Ciudad o lugar físico del trabajo"
-}
-Solo JSON válido. Si un campo no existe en el documento, usa null o array vacío según corresponda.`
+{"nombreCargo":"string","area":"string|null","dependencia":"string|null","mision":"string|null","funciones":["string"],"estudios":{"nivelRequerido":"string|null","carrerasAceptadas":["string"],"requisitosAdicionales":"string|null"},"experiencia":{"generalAnios":"string|null","especifica":["string"],"sectoresDeseados":["string"]},"competencias":["Integridad","Trabajo Colaborativo","Gestión y Logro de Resultados"],"conocimientosTecnicos":["string"],"idiomas":"string|null","condicionesEspeciales":["string"],"remuneracion":"string|null","jornada":"string|null","lugarTrabajo":"string|null"}
+Si un campo no existe usa null o []. Las competencias son los nombres exactos tal como aparecen en el documento.`
 
 // ─── SYSTEM PROMPTS DIFERENCIADOS ─────────────────────────────────────────────
 const PROMPTS = {
-  profile: `Eres un experto senior en selección de personas para sectores de alta exigencia en Chile (Minería, Energía, Sector Público). Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
-
-MODO: ANÁLISIS DE PERFIL CURRICULAR
-Se te entregará:
-  1. Un CUADRO RESUMEN ESTRUCTURADO del cargo (ya extraído y validado)
-  2. Uno o más CVs de candidatos
-
-Tu tarea es contrastar CADA CV contra los requisitos del cuadro resumen y generar una evaluación detallada.
-
-Criterios de scoring ponderado (usa los requisitos del cuadro como referencia explícita):
-  - Formación académica (título, carrera, nivel): 30%
-  - Años de experiencia general en el área: 25%
-  - Experiencia específica requerida por el cargo: 25%
-  - Formación complementaria / certificaciones: 10%
-  - Condiciones especiales / conocimientos técnicos: 10%
-
-Para cada criterio, indica en matchDetail si el candidato CUMPLE, CUMPLE PARCIALMENTE o NO CUMPLE el requisito específico del perfil.
-
-Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin backticks:
-{
-  "candidates": [
-    {
-      "name": "Nombre completo del candidato (extráelo del CV; si no aparece, usa nombre del archivo sin extensión)",
-      "fileName": "archivo.pdf",
-      "score": 85,
-      "recommendation": "CONTRATAR",
-      "summary": "Análisis de 2-3 oraciones sobre compatibilidad curricular con el cargo, mencionando elementos concretos del perfil",
-      "strengths": ["fortaleza concreta vs. requisito del cargo 1", "fortaleza 2", "fortaleza 3"],
-      "gaps": ["brecha concreta vs. requisito del cargo 1", "brecha 2"],
-      "matchDetail": {
-        "formacion": {
-          "requerido": "Lo que pide el perfil en formación",
-          "candidato": "Lo que tiene el candidato",
-          "cumple": "CUMPLE"
-        },
-        "experienciaGeneral": {
-          "requerido": "Años/tipo de experiencia requerida",
-          "candidato": "Años/tipo que tiene el candidato",
-          "cumple": "CUMPLE PARCIALMENTE"
-        },
-        "experienciaEspecifica": {
-          "requerido": "Experiencia específica del perfil",
-          "candidato": "Experiencia específica del candidato",
-          "cumple": "NO CUMPLE"
-        },
-        "formacionComplementaria": {
-          "requerido": "Certificaciones/cursos del perfil",
-          "candidato": "Certificaciones/cursos del candidato",
-          "cumple": "CUMPLE"
-        },
-        "condicionesEspeciales": {
-          "requerido": "Condiciones especiales del perfil",
-          "candidato": "Si el candidato las cumple o no",
-          "cumple": "CUMPLE"
-        }
-      },
-      "scoreBreakdown": {
-        "Formación Académica": 80,
-        "Experiencia General": 90,
-        "Experiencia Específica": 75,
-        "Formación Complementaria": 70,
-        "Condiciones Especiales": 85
-      }
-    }
-  ]
-}
-recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR"
-cumple: "CUMPLE" | "CUMPLE PARCIALMENTE" | "NO CUMPLE"
-score y scoreBreakdown de 0 a 100. Ordena por score descendente. Solo JSON válido.`,
+  profile: `Experto en selección de personas Chile. Metodología #MatchViaGeperex.
+INSTRUCCIÓN: JSON puro, SIN backticks, SIN markdown.
+Contrasta cada CV contra el perfil. Pondera: Formación 30%, Exp.General 25%, Exp.Específica 25%, Formación Comp. 10%, Condiciones 10%.
+{"candidates":[{"name":"string","fileName":"string","score":0,"recommendation":"CONTRATAR","summary":"2 oraciones","strengths":["string"],"gaps":["string"],"matchDetail":{"formacion":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaGeneral":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaEspecifica":{"requerido":"string","candidato":"string","cumple":"NO CUMPLE"},"formacionComplementaria":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"condicionesEspeciales":{"requerido":"string","candidato":"string","cumple":"CUMPLE"}},"scoreBreakdown":{"Formación Académica":0,"Experiencia General":0,"Experiencia Específica":0,"Formación Complementaria":0,"Condiciones Especiales":0}}]}
+recommendation:"CONTRATAR"|"RESERVA"|"NO RECOMENDAR". cumple:"CUMPLE"|"CUMPLE PARCIALMENTE"|"NO CUMPLE". Ordena por score desc.`,
 
 }
 
@@ -842,7 +740,7 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
+        max_tokens: 1500,
         system: systemPrompt,
         messages: [{ role: 'user', content: userContent }],
       }),
@@ -860,9 +758,7 @@ export default function App() {
     try {
       const parsed = await callExtractAPI(
         PROMPT_EXTRACT_PROFILE,
-        `DOCUMENTO DE PERFIL DE CARGO (${fileName}):
-
-${content.slice(0, 4000)}`
+        `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0, 6000)}`
       )
       setProfileData(parsed)
       notify('✓', `Cuadro de perfil extraído — ${parsed.nombreCargo || 'cargo identificado'}`)
@@ -907,12 +803,13 @@ ${content.slice(0, 4000)}`
     if (profileData) {
       // Perfil compacto para reducir tokens de input
       const compactProfile = JSON.stringify({ cargo: profileData.nombreCargo, estudios: profileData.estudios?.nivelRequerido, carreras: profileData.estudios?.carrerasAceptadas?.slice(0,3), expGeneral: profileData.experiencia?.generalAnios, expEspecifica: profileData.experiencia?.especifica?.slice(0,3), condiciones: profileData.condicionesEspeciales?.slice(0,2) })
-      userPrompt += `PERFIL ESTRUCTURADO: ${compactProfile}\n\nTEXTO CARGO:\n${jobFile.content.slice(0, 800)}\n\n`
+      const profileTextChars = cvList.length >= 3 ? 500 : 700
+      userPrompt += `PERFIL ESTRUCTURADO: ${compactProfile}\n\nTEXTO CARGO:\n${jobFile.content.slice(0, profileTextChars)}\n\n`
     } else {
       userPrompt += `PERFIL DEL CARGO (${jobFile.name}):\n${jobFile.content.slice(0, 2000)}\n\n`
     }
 
-    const cvMaxChars = cvList.length >= 2 ? 900 : 1200
+    const cvMaxChars = cvList.length >= 3 ? 600 : cvList.length >= 2 ? 800 : 1000
     cvList.forEach((cv, i) => { userPrompt += `--- CV ${i + 1}: ${cv.name} ---\n${cv.content.slice(0, cvMaxChars)}\n\n` })
 
     const res = await fetch('/api/analyze', {
