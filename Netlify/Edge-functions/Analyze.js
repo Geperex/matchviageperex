@@ -1,8 +1,5 @@
 // netlify/edge-functions/analyze.js
-// Edge Function con streaming — sin límite de tiempo, respuesta rápida
-
 export default async (request, context) => {
-  // CORS preflight
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -24,7 +21,7 @@ export default async (request, context) => {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY")
   if (!apiKey) {
     return new Response(
-      JSON.stringify({ error: "ANTHROPIC_API_KEY no configurada en variables de entorno." }),
+      JSON.stringify({ error: "ANTHROPIC_API_KEY no configurada." }),
       { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
     )
   }
@@ -39,28 +36,24 @@ export default async (request, context) => {
     })
   }
 
-  // Limitar max_tokens — el frontend envía el valor correcto por modo (hasta 3500 para 360°)
-  if (!body.max_tokens || body.max_tokens > 3500) {
-    body.max_tokens = 3500
+  // Construir payload limpio para Anthropic
+  const payload = {
+    model:      body.model || "claude-haiku-4-5-20251001",
+    max_tokens: Math.min(body.max_tokens || 1200, 4000),
+    messages:   body.messages,
   }
+  if (body.system) payload.system = body.system
 
-  // Usar streaming de Anthropic para no acumular toda la respuesta en memoria
-  // y evitar timeouts en conexiones lentas
   const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
+      "Content-Type":    "application/json",
+      "x-api-key":       apiKey,
       "anthropic-version": "2023-06-01",
-      "anthropic-beta": "messages-2023-12-15",
     },
-    body: JSON.stringify({
-      ...body,
-      stream: false, // Sin streaming — más simple y compatible
-    }),
+    body: JSON.stringify(payload),
   })
 
-  // Pasar la respuesta directamente sin buffering adicional
   const data = await anthropicRes.json()
 
   return new Response(JSON.stringify(data), {
