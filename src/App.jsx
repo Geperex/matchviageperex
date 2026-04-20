@@ -1729,7 +1729,6 @@ export default function App() {
               <div className="topbar-avatar">G</div>
               <div style={{ display:'flex',flexDirection:'column' }}>
                 <span style={{ fontSize:11,fontWeight:700,color:C.text }}>Geperex Limitada</span>
-                <span style={{ fontSize:9,color:C.dim,fontFamily:"'DM Mono'" }}>RUT 78.110.793-K</span>
               </div>
             </div>
           </div>
