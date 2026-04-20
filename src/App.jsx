@@ -790,7 +790,31 @@ function CandidateCard({ candidate: c, idx, tab }) {
               </table>
             </div>
           )}
-      {/* Tabla comparativa */}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── COMPARATIVE PANEL ────────────────────────────────────────────────────────
+function ComparativePanel({ compareResults, onExportCSV }) {
+  const { profile, full } = compareResults
+  const allNames = [...new Set([
+    ...(profile?.candidates||[]).map(c=>c.name),
+    ...(full?.candidates||[]).map(c=>c.name),
+  ])]
+  const find = (res,name) => res?.candidates?.find(c=>c.name===name)
+  const matrix = allNames.map(name=>{
+    const p=find(profile,name), f=find(full,name)
+    const scores=[p?.score,f?.score].filter(s=>s!=null)
+    const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0
+    return { name, p, f, avg, reco:p?.recommendation||f?.recommendation }
+  }).sort((a,b)=>b.avg-a.avg)
+  const winner = matrix[0]
+  const winnerReco = RECO[winner?.reco] || RECO['RESERVA']
+
+  return (
+    <div>
       <div className="bp" style={{ marginBottom:16, overflowX:'auto' }}>
         <div className="bp-title">Tabla Comparativa por Tipo de Análisis</div>
         <table className="matrix-table">
