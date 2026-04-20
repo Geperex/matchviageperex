@@ -28,6 +28,11 @@ const C = {
   amber:      '#92600A',
   amberLt:    '#B8860B',
   amberDim:   'rgba(146,96,10,0.10)',
+  // Aliases para compatibilidad con v6
+  gold:       '#C9853A',
+  goldDim:    'rgba(201,133,58,0.12)',
+  purple:     '#1B2A4A',
+  purpleDim:  'rgba(27,42,74,0.10)',
 }
 
 // ─── PROMPT: EXTRACCIÓN ESTRUCTURADA DEL PERFIL (Fase 1) ─────────────────────
@@ -309,7 +314,7 @@ function ProfileCard({ profile, loading }) {
           <div style={{ fontSize: 9, color: C.accent, fontFamily: "'DM Mono'", letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
             Cuadro Resumen del Cargo · Referencia de Contraste
           </div>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1, color: C.text }}>
+          <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1, color: C.text }}>
             {profile.nombreCargo || 'Cargo no identificado'}
           </div>
           {(profile.area || profile.dependencia) && (
@@ -570,7 +575,7 @@ function CandidateCard({ candidate: c, idx }) {
               {rankLabels[idx]}
             </div>
           )}
-          <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, lineHeight: 1.2, marginBottom: 5 }}>{c.name || 'Candidato'}</div>
+          <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 17, lineHeight: 1.2, marginBottom: 5 }}>{c.name || 'Candidato'}</div>
           <div style={{ fontSize: 11, color: C.dim, marginBottom: 7 }}>{c.fileName}</div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
             {c.recommendation && <RecoBadge reco={c.recommendation} />}
@@ -698,7 +703,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
                 return (
                   <tr key={i}>
                     <td>
-                      <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14 }}>{row.name}</div>
+                      <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 14 }}>{row.name}</div>
                       {i < 3 && <div style={{ fontSize: 9, color: ['#EAB308','#94A3B8','#CD8B45'][i], fontFamily: "'DM Mono'", fontWeight: 700, letterSpacing: '.08em', marginTop: 2 }}>
                         {['🥇 MEJOR MATCH','🥈 2° LUGAR','🥉 3° LUGAR'][i]}
                       </div>}
@@ -729,7 +734,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
             const comps = row.f?.competencies || row.co?.competencies
             if (!comps) return (
               <div key={i} className="glow-card" style={{ padding: 18, textAlign: 'center' }}>
-                <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{row.name}</div>
+                <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{row.name}</div>
                 <div style={{ fontSize: 12, color: C.dim }}>Sin datos de competencias</div>
               </div>
             )
@@ -737,7 +742,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
             const reco = row.f?.recommendation || row.co?.recommendation || row.p?.recommendation
             return (
               <div key={i} className="glow-card" style={{ padding: '18px', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{row.name}</div>
+                <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{row.name}</div>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                   {reco && <RecoBadge reco={reco} />}
                   <span style={{ fontFamily: "'DM Mono'", color: scoreColor(row.avg), fontWeight: 700, fontSize: 13 }}>AVG: {row.avg}</span>
@@ -761,7 +766,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
               <div key={i} className="glow-card" style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, borderLeft: `3px solid ${rankColor}` }}>
                 <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 22, color: C.dim, minWidth: 32 }}>#{i + 1}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>{row.name}</div>
+                  <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>{row.name}</div>
                   {summary && <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{summary}</div>}
                 </div>
                 <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -817,7 +822,6 @@ export default function App() {
     if (!file) return
     setJobFile({ name: file.name, content: '', status: 'loading' })
     setProfileData(null)
-    setCompetencyDict(null)
     setResults(null)
     setCompareResults(null)
     try {
@@ -837,8 +841,8 @@ export default function App() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 3500,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
         system: systemPrompt,
         messages: [{ role: 'user', content: userContent }],
       }),
@@ -908,7 +912,7 @@ ${content.slice(0, 4000)}`
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 3500,
         system: PROMPTS[modeId],
         messages: [{ role: 'user', content: userPrompt }],
@@ -960,18 +964,14 @@ ${content.slice(0, 4000)}`
 
     try {
       if (mode === 'compare') {
-        // Secuencial para respetar límite de concurrencia de Netlify gratuito
-        setLoadMsg('Ejecutando análisis de perfil (1/3)…')
-        const profileData = await callAnalyze('profile', ready).catch(() => null)
-        setLoadMsg('Ejecutando análisis de competencias (2/3)…')
-        const compData    = await callAnalyze('competencies', ready).catch(() => null)
-        const fullData    = await callAnalyze('full', ready).catch(() => null)
-        setCompareResults({ profile: profileData, competencies: compData, full: fullData })
+        setLoadMsg(`Analizando ${ready.length} candidatos en comparativa…`)
+        const pD = await callAnalyze('profile', ready)
+        setCompareResults({ profile: pD, competencies: null, full: pD })
         setActiveView('compare')
       } else {
         setLoadMsg(`Analizando ${ready.length} candidato(s)…`)
-        const parsed = await callAnalyze(mode, ready)
-        setResults({ candidates: parsed.candidates || [], mode })
+        const parsed = await callAnalyze('profile', ready)
+        setResults({ candidates: parsed.candidates || [], mode: 'profile' })
         setActiveView('results')
       }
       setCredits(c => c - totalCost)
@@ -1014,7 +1014,7 @@ ${content.slice(0, 4000)}`
   }
 
   function reset() {
-    setJobFile(null); setProfileData(null); setCompetencyDict(null); setCvFiles([])
+    setJobFile(null); setProfileData(null); setCvFiles([])
     setResults(null); setCompareResults(null)
     setError(''); setActiveView('results')
     if (jobRef.current) jobRef.current.value = ''
@@ -1028,24 +1028,22 @@ ${content.slice(0, 4000)}`
       <style>{CSS}</style>
       {/* BG */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-        background: C.bg }} />
+        background: C.bg, opacity: 0 }} />
 
       {/* HEADER */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 54, background: 'rgba(6,8,16,.9)', backdropFilter: 'blur(16px)', borderBottom: `1px solid ${C.border}` }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 54, background: C.navy, borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 13, color: '#000', boxShadow: `0 0 16px ${C.accent}40` }}>G</div>
-          <div>
-            <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 15 }}>
-              <span style={{ color: C.accent }}>#</span>Match<span style={{ color: C.muted, fontWeight: 300 }}>Via</span>Geperex
-            </div>
-            <div style={{ fontFamily: "'DM Mono'", fontSize: 9, color: C.dim, letterSpacing: '.1em' }}>GEPEREX LIMITADA · RUT 78.110.793-K</div>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono'", fontWeight: 700, fontSize: 13, color: '#fff' }}>G</div>
+          <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 15, color: C.sidebarText }}>
+            #MatchVia<span style={{ color: C.accent }}>Geperex</span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontFamily: "'DM Mono'", fontSize: 12, color: C.gold, background: C.goldDim, border: `1px solid ${C.gold}30`, borderRadius: 100, padding: '5px 13px', fontWeight: 700 }}>
-            ⬡ {credits} créditos
+          <div style={{ fontFamily: "'DM Mono'", fontSize: 12, color: C.accent, background: 'rgba(201,133,58,0.15)', border: `1px solid rgba(201,133,58,0.3)`, borderRadius: 100, padding: '5px 13px', fontWeight: 700 }}>
+            🏅 {credits} créditos
           </div>
-          <button onClick={() => setModal(true)} style={{ padding: '5px 13px', borderRadius: 100, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans'", fontWeight: 600 }}>+ Comprar</button>
+          <button onClick={() => setModal(true)} style={{ padding: '5px 13px', borderRadius: 100, border: `1px solid rgba(255,255,255,0.2)`, background: 'transparent', color: C.sidebarMuted, fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans'", fontWeight: 600 }}>+ Comprar</button>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.sidebarText, fontFamily: "'DM Sans'" }}>Geperex Limitada</div>
         </div>
       </header>
 
@@ -1053,14 +1051,14 @@ ${content.slice(0, 4000)}`
       <main style={{ position: 'relative', zIndex: 5, maxWidth: 1100, margin: '0 auto', padding: '36px 18px 80px' }}>
         {/* Hero */}
         <div className="fade-up" style={{ marginBottom: 34, textAlign: 'center' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(79,125,243,0.08)', border: `1px solid rgba(79,125,243,0.2)`, borderRadius: 100, padding: '4px 14px', fontSize: 10, color: C.accent, fontFamily: "'DM Mono'", letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 14 }}>
-            ◈ Motor de Selección IA + OCR · v2.0
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.accentDim, border: `1px solid ${C.accent}40`, borderRadius: 100, padding: '4px 14px', fontSize: 10, color: C.accent, fontFamily: "'DM Mono'", letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 14 }}>
+            ◈ Motor de Selección IA · v9.0
           </div>
-          <h1 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 'clamp(1.9rem,5vw,3rem)', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 12 }}>
-            <span style={{ color: C.accent }}>#</span>Match<em style={{ fontStyle: 'italic', color: C.muted, fontWeight: 300 }}>Via</em><span style={{ color: '#8AAAF7' }}>Geperex</span>
+          <h1 style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 800, fontSize: 'clamp(1.9rem,5vw,3rem)', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 12, color: C.navy }}>
+            #MatchVia<span style={{ color: C.accent }}>Geperex</span>
           </h1>
-          <p style={{ color: C.muted, fontSize: 14, maxWidth: 480, margin: '0 auto', lineHeight: 1.7, fontWeight: 300 }}>
-            Tres modos de análisis con <strong style={{ color: C.text, fontWeight: 500 }}>prompts especializados</strong> + <strong style={{ color: C.purple, fontWeight: 500 }}>Vista Comparativa Cross-Modal</strong> con radar charts y exportación CSV.
+          <p style={{ color: C.muted, fontSize: 14, maxWidth: 480, margin: '0 auto', lineHeight: 1.7, fontWeight: 400 }}>
+            Análisis curricular inteligente con IA. Contrasta CVs contra el perfil del cargo y obtén un ranking objetivo de candidatos.
           </p>
         </div>
 
@@ -1115,7 +1113,6 @@ ${content.slice(0, 4000)}`
             {canAnalyze && (
               <div style={{ marginTop: 8, fontSize: 11, color: C.dim, textAlign: 'center' }}>
                 Costo: <span style={{ color: C.gold, fontWeight: 700 }}>{totalCost} créditos</span>
-                {mode === 'compare' && <span style={{ color: C.muted }}> · 3 análisis paralelos</span>}
               </div>
             )}
             {error && <div style={{ marginTop: 10, background: C.redDim, border: `1px solid ${C.red}30`, borderRadius: 8, padding: '10px 12px', fontSize: 12, color: C.red, lineHeight: 1.5 }}>⚠ {error}</div>}
@@ -1153,7 +1150,7 @@ ${content.slice(0, 4000)}`
           {loading && (
             <div className="glow-card" style={{ padding: '48px 28px', textAlign: 'center' }}>
               <div className="spinner" style={{ margin: '0 auto 16px' }} />
-              <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{loadMsg || 'Procesando…'}</div>
+              <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{loadMsg || 'Procesando…'}</div>
               {mode === 'compare' && <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados ejecutándose en paralelo</div>}
             </div>
           )}
@@ -1161,7 +1158,7 @@ ${content.slice(0, 4000)}`
           {!loading && activeView === 'results' && results && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ marginBottom: 6 }}>
-                <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20 }}>
+                <h2 style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 20 }}>
                   {MODES.find(m => m.id === results.mode)?.label}
                 </h2>
                 <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{results.candidates.length} candidato(s) evaluado(s)</div>
@@ -1173,7 +1170,7 @@ ${content.slice(0, 4000)}`
           {!loading && activeView === 'compare' && compareResults && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Vista Comparativa Cross-Modal</h2>
+                <h2 style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Vista Comparativa</h2>
                 <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados · Comparación matricial · Radar charts · Exportación CSV</div>
               </div>
               <ComparativePanel compareResults={compareResults} onExportCSV={exportCSV} />
@@ -1183,7 +1180,7 @@ ${content.slice(0, 4000)}`
           {!loading && !results && !compareResults && (
             <div style={{ textAlign: 'center', padding: '52px 24px', background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 14 }}>
               <div style={{ fontSize: 40, opacity: .2, marginBottom: 14 }}>◈</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 17, color: C.muted, marginBottom: 8 }}>Sin resultados aún</div>
+              <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 17, color: C.muted, marginBottom: 8 }}>Sin resultados aún</div>
               <div style={{ color: C.dim, fontSize: 13, maxWidth: 380, margin: '0 auto', lineHeight: 1.7 }}>
                 Sube archivos, elige análisis y presiona <strong style={{ color: C.text }}>Analizar</strong>.<br />
                 Para la <strong style={{ color: C.purple }}>Vista Comparativa ⚡</strong>, selecciona ese modo.<br /><br />
@@ -1201,9 +1198,9 @@ ${content.slice(0, 4000)}`
 
       {/* MODAL */}
       {modal && (
-        <div onClick={e => { if (e.target === e.currentTarget) setModal(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,16,.87)', backdropFilter: 'blur(10px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+        <div onClick={e => { if (e.target === e.currentTarget) setModal(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
           <div className="glow-card" style={{ padding: 28, maxWidth: 370, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
-            <div style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>⬡ Comprar Créditos</div>
+            <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>⬡ Comprar Créditos</div>
             <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.6, marginBottom: 20, fontWeight: 300 }}>Elige el paquete para tus procesos de selección.</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 18 }}>
               {[[50,'$4.990'],[150,'$12.990'],[500,'$34.990']].map(([amt, price]) => (
