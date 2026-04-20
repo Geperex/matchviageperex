@@ -151,7 +151,6 @@ recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR"
 cumple: "CUMPLE" | "CUMPLE PARCIALMENTE" | "NO CUMPLE"
 score y scoreBreakdown de 0 a 100. Ordena por score descendente. Solo JSON válido.`,
 
-None
 }
 
 // ─── MODOS ────────────────────────────────────────────────────────────────────
