@@ -125,7 +125,7 @@ const MODES = [
   { id: 'full',     label: 'Análisis 360°',        icon: '🔬', cost: 3,
     desc: 'Curricular + competencias integrado',
     tooltip: 'Análisis completo: evalúa requisitos formales Y competencias del cargo en una sola consulta. Incluye radar competencial y recomendación ejecutiva.' },
-  { id: 'compare',  label: 'Vista Comparativa',    icon: '⚡', cost: 5,
+  { id: 'compare',  label: 'Vista Comparativa',    icon: '⚡', cost: 4,
     desc: 'Ranking entre candidatos',
     tooltip: 'Ejecuta los 3 análisis para todos los CVs y los cruza en una matriz comparativa con ranking final. Ideal cuando tienes 2 o más finalistas.' },
 ]
@@ -1390,7 +1390,7 @@ export default function App() {
   const smartLabel  = ready.length >= 2 ? 'Vista Comparativa' : 'Análisis 360° Global'
   const smartIcon   = ready.length >= 2 ? '⚡' : '🔬'
   const smartCost   = ready.length >= 2
-    ? (MODES.find(m=>m.id==='compare')?.cost||5) * ready.length
+    ? (MODES.find(m=>m.id==='compare')?.cost||4) * ready.length
     : (MODES.find(m=>m.id==='full')?.cost||3) * ready.length
   const smartDesc   = ready.length >= 2
     ? `${ready.length} candidatos — ranking + comparativa + radar`
@@ -1409,7 +1409,7 @@ export default function App() {
     profile:      ['Procesando documentos','Contrastando perfil','Generando evaluación'],
     competencies: ['Procesando documentos','Aplicando diccionario','Levantando evidencias'],
     full:         ['Procesando documentos','Análisis curricular','Análisis competencial','Integrando 360°'],
-    compare:      ['Análisis de Perfil','Análisis Competencias','Análisis 360°'],
+    compare:      ['Análisis de Perfil','Análisis 360° Completo'],
   }
   const steps = LOAD_STEPS[mode]||LOAD_STEPS.profile
   const stepIdx = Math.max(0, steps.findIndex(s=>loadMsg.toLowerCase().includes(s.split(' ')[0].toLowerCase())))
@@ -1427,13 +1427,13 @@ export default function App() {
       const hLabel = `${modeLabel} — ${cvNames}`
 
       if (modeToRun==='compare') {
-        setLoadMsg('Ejecutando análisis de perfil (1/3)…')
-        const pD = await callAnalyze('profile',ready).catch(()=>null)
-        setLoadMsg('Ejecutando análisis de competencias (2/3)…')
-        const cD = await callAnalyze('competencies',ready).catch(()=>null)
-        setLoadMsg('Ejecutando análisis 360° (3/3)…')
-        const fD = await callAnalyze('full',ready).catch(()=>null)
-        const newCompare = { profile:pD, competencies:cD, full:fD }
+        // Solo 2 análisis: perfil curricular + 360° (que ya incluye competencias)
+        setLoadMsg('Analizando perfil curricular (1/2)…')
+        const pD = await callAnalyze('profile', ready).catch(()=>null)
+        setLoadMsg('Ejecutando análisis 360° completo (2/2)…')
+        const fD = await callAnalyze('full', ready).catch(()=>null)
+        // Usar full como fuente de competencias también
+        const newCompare = { profile:pD, competencies:fD, full:fD }
         setCompareResults(newCompare)
         setActiveTab('comparativa')
         setHistory(h=>[{ id:hId, label:hLabel, date:hDate, mode:modeToRun, results:null, compareResults:newCompare },...h])
