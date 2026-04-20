@@ -108,26 +108,26 @@ Responde ÚNICAMENTE con JSON válido:
 }
 recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR". brecha: "SIN BRECHA" | "PARCIAL" | "SIGNIFICATIVA" | "CRITICA". Ordena por score descendente.`,
 
-  full: `Eres un experto en selección de personas para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex de GEPEREX LIMITADA.
-
-INSTRUCCIÓN CRÍTICA: Responde SOLO con el JSON puro, SIN backticks, SIN markdown, SIN texto antes o después.
-
-MODO: ANÁLISIS 360° — genera para cada candidato:
-- score = (scoreProfile*0.60)+(scoreCompetencies*0.40)
-- matchDetail: 5 criterios (formacion, experienciaGeneral, experienciaEspecifica, formacionComplementaria, condicionesEspeciales), cada uno con requerido/candidato/cumple
-- competencyContrast: una entrada por competencia del diccionario, con evidencia breve
-- executiveSummary: 2-3 oraciones máximo
-
-Formato JSON exacto (sin texto adicional):
-{"candidates":[{"name":"string","fileName":"string","score":0,"scoreProfile":0,"scoreCompetencies":0,"recommendation":"CONTRATAR","executiveSummary":"string","summary":"string","strengths":["string"],"gaps":["string"],"riskFactors":["string"],"matchDetail":{"formacion":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaGeneral":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaEspecifica":{"requerido":"string","candidato":"string","cumple":"NO CUMPLE"},"formacionComplementaria":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"condicionesEspeciales":{"requerido":"string","candidato":"string","cumple":"CUMPLE"}},"scoreBreakdown":{"Formación Académica":0,"Experiencia General":0,"Experiencia Específica":0,"Formación Complementaria":0,"Condiciones Especiales":0},"competencies":{"NombreComp":0},"competencyContrast":[{"competencia":"string","nivelRequerido":"ALTO","nivelObservado":"INTERMEDIO","score":0,"evidencia":"string","brecha":"PARCIAL"}]}]}
-recommendation: "CONTRATAR"|"RESERVA"|"NO RECOMENDAR". cumple: "CUMPLE"|"CUMPLE PARCIALMENTE"|"NO CUMPLE". brecha: "SIN BRECHA"|"PARCIAL"|"SIGNIFICATIVA"|"CRITICA". Ordena por score desc.`
+  full: `Eres un experto en selección de personas para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex.
+INSTRUCCIÓN CRÍTICA: Responde SOLO con JSON puro, SIN backticks, SIN markdown, SIN texto antes o después.
+MODO: ANÁLISIS 360° — score = (scoreProfile*0.60)+(scoreCompetencies*0.40)
+matchDetail: solo los campos cumple de cada criterio (formacion, experienciaGeneral, experienciaEspecifica, formacionComplementaria, condicionesEspeciales).
+competencyContrast: max 5 competencias, evidencia en 1 frase corta.
+executiveSummary: máximo 2 oraciones.
+{"candidates":[{"name":"string","fileName":"string","score":0,"scoreProfile":0,"scoreCompetencies":0,"recommendation":"CONTRATAR","executiveSummary":"string","summary":"string","strengths":["string"],"gaps":["string"],"matchDetail":{"formacion":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaGeneral":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaEspecifica":{"requerido":"string","candidato":"string","cumple":"NO CUMPLE"},"formacionComplementaria":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"condicionesEspeciales":{"requerido":"string","candidato":"string","cumple":"CUMPLE"}},"scoreBreakdown":{"Formación Académica":0,"Experiencia General":0,"Experiencia Específica":0,"Formación Complementaria":0,"Condiciones Especiales":0},"competencies":{"NombreComp":0},"competencyContrast":[{"competencia":"string","nivelRequerido":"ALTO","nivelObservado":"INTERMEDIO","score":0,"evidencia":"string","brecha":"PARCIAL"}]}]}
+recommendation:"CONTRATAR"|"RESERVA"|"NO RECOMENDAR". cumple:"CUMPLE"|"CUMPLE PARCIALMENTE"|"NO CUMPLE". brecha:"SIN BRECHA"|"PARCIAL"|"SIGNIFICATIVA"|"CRITICA". Ordena por score desc.`
 }
 
 const MODES = [
-  { id: 'profile',      label: 'Análisis de Perfil',    icon: '📋', cost: 2, desc: 'Ajuste del candidato al perfil del cargo' },
-  { id: 'competencies', label: 'Análisis Competencias',  icon: '🎯', cost: 2, desc: 'Evaluación de competencias clave' },
-  { id: 'full',         label: 'Análisis 360° Global',   icon: '🔬', cost: 3, desc: 'Visión integral del candidato' },
-  { id: 'compare',      label: 'Vista Comparativa',      icon: '⚡', cost: 5, desc: 'Comparar candidatos en paralelo' },
+  { id: 'profile',  label: 'Análisis de Perfil',  icon: '📋', cost: 2,
+    desc: 'Compatibilidad curricular',
+    tooltip: 'Contrasta el CV contra los requisitos formales del cargo: formación, experiencia, certificaciones y condiciones. Ideal para filtrado rápido.' },
+  { id: 'full',     label: 'Análisis 360°',        icon: '🔬', cost: 3,
+    desc: 'Curricular + competencias integrado',
+    tooltip: 'Análisis completo: evalúa requisitos formales Y competencias del cargo en una sola consulta. Incluye radar competencial y recomendación ejecutiva.' },
+  { id: 'compare',  label: 'Vista Comparativa',    icon: '⚡', cost: 5,
+    desc: 'Ranking entre candidatos',
+    tooltip: 'Ejecuta los 3 análisis para todos los CVs y los cruza en una matriz comparativa con ranking final. Ideal cuando tienes 2 o más finalistas.' },
 ]
 
 const TABS = [
@@ -1370,8 +1370,10 @@ export default function App() {
     ? `${ready.length} candidatos — ranking + comparativa + radar`
     : '1 candidato — análisis curricular + competencias + 360°'
 
-  // El modo efectivo depende de si el usuario está en modo avanzado o automático
-  const effectiveMode = showAdvanced ? mode : smartMode
+  // El modo efectivo: en automático usa smartMode; en avanzado usa mode pero redirige competencies → full
+  const effectiveMode = showAdvanced
+    ? (mode === 'competencies' ? 'full' : mode)
+    : smartMode
   const totalCost   = showAdvanced
     ? (currentMode ? currentMode.cost * ready.length : 0)
     : smartCost
@@ -1606,7 +1608,12 @@ export default function App() {
                 }}>← Auto</button>
               </div>
               {MODES.map(m=>(
-                <div key={m.id} className={`mode-item${mode===m.id?' active':''}`} onClick={()=>setMode(m.id)}>
+                <div key={m.id}
+                  className={`mode-item${mode===m.id?' active':''}`}
+                  onClick={()=>setMode(m.id)}
+                  style={{ position:'relative' }}
+                  title={m.tooltip}
+                >
                   <div className={`mode-radio${mode===m.id?' on':''}`}/>
                   <div style={{ flex:1,minWidth:0 }}>
                     <div style={{ display:'flex',alignItems:'center',gap:5 }}>
