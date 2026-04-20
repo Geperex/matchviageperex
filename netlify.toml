@@ -2,11 +2,10 @@
   command = "npm run build"
   publish = "dist"
 
-# Edge Function para /api/analyze — sin límite de tiempo
-[[edge_functions]]
-  path = "/api/analyze"
-  function = "analyze"
-
-# Las funciones serverless quedan en su carpeta pero /api/analyze ya está tomado por la edge
 [functions]
   directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
