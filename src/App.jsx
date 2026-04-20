@@ -1142,7 +1142,7 @@ function ProfileCard({ profile }) {
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [credits, setCredits]             = useState(20)
+  const [credits, setCredits]             = useState(50)
   const [jobFile, setJobFile]             = useState(null)
   const [profileData, setProfileData]     = useState(null)
   const [profileLoading, setProfileLoading] = useState(false)
