@@ -42,9 +42,6 @@ const PROMPT_EXTRACT_PROFILE = `Extrae la estructura del perfil de cargo. IMPORT
 Solo JSON válido, sin markdown, sin backticks:
 {"nombreCargo":"string","area":"string|null","dependencia":"string|null","mision":"string|null","funciones":["string"],"estudios":{"nivelRequerido":"string|null","carrerasAceptadas":["string"],"requisitosAdicionales":"string|null"},"experiencia":{"generalAnios":"string|null","especifica":["string"],"sectoresDeseados":["string"]},"competencias":["string"],"conocimientosTecnicos":["string"],"idiomas":"string|null","condicionesEspeciales":["string"],"remuneracion":"string|null","jornada":"string|null","lugarTrabajo":"string|null"}`
 
-const PROMPT_EXTRACT_COMPETENCIES = `Extrae las competencias requeridas del perfil de cargo. Busca en TODO el documento secciones tituladas "Competencias", "Habilidades", "Capacidades", "Perfil conductual", ítems con código (C1, C2...), numerados o cualquier lista de atributos requeridos al candidato. Para cada competencia encontrada, extrae su nombre y características. Si no hay competencias explícitas, infiere las más relevantes para el cargo según sus funciones (máximo 5 inferidas, indicar fuente INFERIDA).
-Solo JSON válido, sin markdown, sin backticks:
-{"nombreCargo":"string","competencias":[{"nombre":"string","tipo":"CONDUCTUAL|TECNICA|LIDERAZGO|GESTION","definicion":"string","nivelRequerido":"BASICO|INTERMEDIO|ALTO|CRITICO","indicadores":["string"],"fuente":"EXPLICITA|INFERIDA"}]}`
 
 const PROMPTS = {
   profile: `Eres un experto en selección de personas para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex.
@@ -82,61 +79,21 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin ba
 }
 recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR". cumple: "CUMPLE" | "CUMPLE PARCIALMENTE" | "NO CUMPLE". Ordena por score descendente.`,
 
-  competencies: `Eres un experto en evaluación de competencias para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex.
-INSTRUCCIÓN CRÍTICA: Responde SOLO con JSON puro, SIN backticks, SIN markdown, SIN texto antes o después.
-
-MODO: ANÁLISIS DE COMPETENCIAS
-Se te entregará:
-  1. DICCIONARIO DE COMPETENCIAS del cargo
-  2. Uno o más CVs de candidatos
-
-Responde ÚNICAMENTE con JSON válido:
-{
-  "candidates": [
-    {
-      "name": "Nombre completo",
-      "fileName": "archivo.pdf",
-      "score": 78,
-      "recommendation": "RESERVA",
-      "summary": "Evaluación 2-3 oraciones",
-      "strengths": ["fortaleza 1"],
-      "gaps": ["brecha 1"],
-      "competencies": {"NombreCompetencia1": 85},
-      "competencyContrast": [
-        {"competencia": "nombre","nivelRequerido": "ALTO","nivelObservado": "INTERMEDIO","score": 68,"evidencia": "texto","brecha": "PARCIAL"}
-      ]
-    }
-  ]
-}
-recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR". brecha: "SIN BRECHA" | "PARCIAL" | "SIGNIFICATIVA" | "CRITICA". Ordena por score descendente.`,
-
-  full: `Eres un experto en selección de personas para sectores de alta exigencia en Chile. Metodología: #MatchViaGeperex.
-INSTRUCCIÓN CRÍTICA: Responde SOLO con JSON puro, SIN backticks, SIN markdown, SIN texto antes o después.
-MODO: ANÁLISIS 360° — score = (scoreProfile*0.60)+(scoreCompetencies*0.40)
-matchDetail: solo los campos cumple de cada criterio (formacion, experienciaGeneral, experienciaEspecifica, formacionComplementaria, condicionesEspeciales).
-competencyContrast: una entrada por CADA competencia del marco entregado (evalúa TODAS las que se listen, sin omitir ninguna). Evidencia en 1 frase corta.
-executiveSummary: máximo 2 oraciones.
-{"candidates":[{"name":"string","fileName":"string","score":0,"scoreProfile":0,"scoreCompetencies":0,"recommendation":"CONTRATAR","executiveSummary":"string","summary":"string","strengths":["string"],"gaps":["string"],"matchDetail":{"formacion":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaGeneral":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaEspecifica":{"requerido":"string","candidato":"string","cumple":"NO CUMPLE"},"formacionComplementaria":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"condicionesEspeciales":{"requerido":"string","candidato":"string","cumple":"CUMPLE"}},"scoreBreakdown":{"Formación Académica":0,"Experiencia General":0,"Experiencia Específica":0,"Formación Complementaria":0,"Condiciones Especiales":0},"competencies":{"NombreComp":0},"competencyContrast":[{"competencia":"string","nivelRequerido":"ALTO","nivelObservado":"INTERMEDIO","score":0,"evidencia":"string","brecha":"PARCIAL"}]}]}
-recommendation:"CONTRATAR"|"RESERVA"|"NO RECOMENDAR". cumple:"CUMPLE"|"CUMPLE PARCIALMENTE"|"NO CUMPLE". brecha:"SIN BRECHA"|"PARCIAL"|"SIGNIFICATIVA"|"CRITICA". Ordena por score desc.`
 }
 
 const MODES = [
-  { id: 'profile',  label: 'Análisis de Perfil',  icon: '📋', cost: 2,
+  { id: 'profile', label: 'Análisis de Perfil', icon: '📋', cost: 2,
     desc: 'Compatibilidad curricular',
-    tooltip: 'Contrasta el CV contra los requisitos formales del cargo: formación, experiencia, certificaciones y condiciones. Ideal para filtrado rápido.' },
-  { id: 'full',     label: 'Análisis 360°',        icon: '🔬', cost: 3,
-    desc: 'Curricular + competencias integrado',
-    tooltip: 'Análisis completo: evalúa requisitos formales Y competencias del cargo en una sola consulta. Incluye radar competencial y recomendación ejecutiva.' },
-  { id: 'compare',  label: 'Vista Comparativa',    icon: '⚡', cost: 4,
+    tooltip: 'Contrasta el CV contra los requisitos formales del cargo: formación, experiencia, certificaciones y condiciones especiales.' },
+  { id: 'compare', label: 'Vista Comparativa',  icon: '⚡', cost: 3,
     desc: 'Ranking entre candidatos',
-    tooltip: 'Ejecuta los 3 análisis para todos los CVs y los cruza en una matriz comparativa con ranking final. Ideal cuando tienes 2 o más finalistas.' },
+    tooltip: 'Analiza todos los CVs contra el perfil y los rankea en una tabla comparativa. Ideal para decidir entre 2 o más candidatos.' },
 ]
 
 const TABS = [
-  { id: 'resumen',      label: 'Resumen Ejecutivo' },
-  { id: 'competencias', label: 'Competencias' },
-  { id: 'detalle',      label: 'Detalle' },
-  { id: 'comparativa',  label: 'Análisis Comparativo' },
+  { id: 'resumen',     label: 'Resumen Ejecutivo' },
+  { id: 'detalle',     label: 'Detalle Curricular' },
+  { id: 'comparativa', label: 'Análisis Comparativo' },
 ]
 
 const RECO = {
@@ -653,103 +610,6 @@ function DonutChart({ score, size = 88 }) {
   )
 }
 
-// ─── RADAR CHART ──────────────────────────────────────────────────────────────
-function RadarChart({ competencies, color = C.navy }) {
-  const entries = Object.entries(competencies || {})
-  if (!entries.length) return null
-
-  const SIZE   = 220
-  const MARGIN = 90          // margen amplio para etiquetas largas
-  const VB     = SIZE + MARGIN * 2
-  const cx     = VB / 2, cy = VB / 2
-  const r      = SIZE * 0.38
-  const n      = entries.length
-  const angle  = i => (Math.PI * 2 * i) / n - Math.PI / 2
-  const pt     = (i, pct) => {
-    const a = angle(i), d = (pct / 100) * r
-    return [cx + d * Math.cos(a), cy + d * Math.sin(a)]
-  }
-  const ringPath = pct =>
-    Array.from({ length: n }, (_, i) => pt(i, pct))
-      .map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + 'Z'
-  const spokes   = Array.from({ length: n }, (_, i) => { const [x,y]=pt(i,100); return `M${cx},${cy}L${x.toFixed(1)},${y.toFixed(1)}` })
-  const dataPts  = entries.map((_,i)=>pt(i,entries[i][1]))
-  const dataPath = dataPts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')+'Z'
-  const uid      = `r${color.replace(/[^a-z0-9]/gi,'')}`
-
-  // Dividir nombre en máx 2 líneas de ~14 chars
-  const splitName = (name) => {
-    if (name.length <= 14) return [name, null]
-    const mid = name.lastIndexOf(' ', 14)
-    if (mid > 4) return [name.slice(0, mid), name.slice(mid+1, mid+15) + (name.length > mid+15 ? '…' : '')]
-    return [name.slice(0, 13) + '…', null]
-  }
-
-  return (
-    <svg viewBox={`0 0 ${VB} ${VB}`} style={{ width:'100%', maxWidth:380, display:'block', margin:'0 auto', animation:'radarIn .5s ease both', overflow:'visible' }} preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <radialGradient id={uid} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={color} stopOpacity=".15"/>
-          <stop offset="100%" stopColor={color} stopOpacity=".02"/>
-        </radialGradient>
-      </defs>
-      {[25,50,75,100].map((pct,i)=>(
-        <path key={i} d={ringPath(pct)} fill="none" stroke={C.border}
-          strokeWidth={pct===100?1.5:1} strokeDasharray={pct===100?'none':'3,3'}/>
-      ))}
-      {[25,50,75].map(pct=>{ const [x,y]=pt(0,pct); return <text key={pct} x={x+3} y={y-3} fontSize="7" fontFamily="'DM Mono'" fill={C.dim} textAnchor="start">{pct}</text> })}
-      {spokes.map((d,i)=><path key={i} d={d} stroke={C.border} strokeWidth="1"/>)}
-      <path d={dataPath} fill={`url(#${uid})`} stroke={color} strokeWidth="2" strokeLinejoin="round"/>
-      {dataPts.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="3.5" fill={color} stroke={C.surface} strokeWidth="2"/>)}
-      {entries.map(([name,val],i)=>{
-        const a       = angle(i)
-        const labelR  = r + 38
-        const lx      = cx + labelR * Math.cos(a)
-        const ly      = cy + labelR * Math.sin(a)
-        const cosA    = Math.cos(a)
-        const anchor  = cosA < -0.15 ? 'end' : cosA > 0.15 ? 'start' : 'middle'
-        const col     = scoreColor(val)
-        const [line1, line2] = splitName(name)
-        const boxW    = 92
-        const boxH    = line2 ? 36 : 26
-        const boxX    = anchor==='end' ? lx - boxW : anchor==='start' ? lx : lx - boxW/2
-        const boxY    = ly - 13
-
-        return (
-          <g key={i}>
-            {/* Línea guía */}
-            <line
-              x1={pt(i,100)[0].toFixed(1)} y1={pt(i,100)[1].toFixed(1)}
-              x2={lx.toFixed(1)} y2={ly.toFixed(1)}
-              stroke={C.borderHi} strokeWidth="1" strokeDasharray="2,3" opacity=".5"
-            />
-            {/* Fondo etiqueta */}
-            <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={5}
-              fill={C.surface} stroke={C.border} strokeWidth=".5" opacity=".95"/>
-            {/* Línea 1 del nombre */}
-            <text x={lx} y={boxY+10} textAnchor={anchor}
-              fontSize="8.5" fontFamily="'DM Sans'" fill={C.muted} fontWeight="500">
-              {line1}
-            </text>
-            {/* Línea 2 del nombre (si existe) */}
-            {line2 && (
-              <text x={lx} y={boxY+21} textAnchor={anchor}
-                fontSize="8.5" fontFamily="'DM Sans'" fill={C.muted} fontWeight="500">
-                {line2}
-              </text>
-            )}
-            {/* Score */}
-            <text x={lx} y={line2 ? boxY+32 : boxY+22} textAnchor={anchor}
-              fontSize="11" fontFamily="'DM Mono'" fill={col} fontWeight="700">
-              {val}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
-  )
-}
-
 // ─── BAR ROW ──────────────────────────────────────────────────────────────────
 function BarRow({ label, value }) {
   const col = scoreColor(value)
@@ -846,27 +706,6 @@ function CandidateCard({ candidate: c, idx, tab }) {
         </div>
       </div>
 
-      {/* Mini stats si hay scores separados */}
-      {(c.scoreProfile!=null||c.scoreCompetencies!=null) && (
-        <div className="cand-stats">
-          <div className="cand-stat">
-            <div className="cand-stat-icon">📋</div>
-            <div className="cand-stat-label">Perfil</div>
-            <div className="cand-stat-val" style={{ color:scoreColor(c.scoreProfile||0) }}>{c.scoreProfile??'—'}%</div>
-          </div>
-          <div className="cand-stat">
-            <div className="cand-stat-icon">🎯</div>
-            <div className="cand-stat-label">Competencias</div>
-            <div className="cand-stat-val" style={{ color:scoreColor(c.scoreCompetencies||0) }}>{c.scoreCompetencies??'—'}%</div>
-          </div>
-          <div className="cand-stat">
-            <div className="cand-stat-icon">🔬</div>
-            <div className="cand-stat-label">360° Global</div>
-            <div className="cand-stat-val" style={{ color:scoreColor(c.score) }}>{c.score}%</div>
-          </div>
-        </div>
-      )}
-
       {/* Fortalezas */}
       {c.strengths?.length>0&&(
         <div style={{ marginBottom:6 }}>
@@ -919,7 +758,6 @@ function CandidateCard({ candidate: c, idx, tab }) {
           {c.competencies&&Object.keys(c.competencies).length>0&&(
             <div style={{ background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:'16px 12px 12px',marginBottom:14 }}>
               <div style={{ fontSize:9,color:C.dim,textTransform:'uppercase',letterSpacing:'.1em',fontWeight:700,fontFamily:"'DM Mono'",textAlign:'center',marginBottom:8 }}>Radar Competencial</div>
-              <RadarChart competencies={c.competencies} color={C.navy}/>
             </div>
           )}
           {/* Tabla matchDetail */}
@@ -943,65 +781,6 @@ function CandidateCard({ candidate: c, idx, tab }) {
               </table>
             </div>
           )}
-          {/* Tabla competencyContrast */}
-          {c.competencyContrast?.length>0&&(
-            <div style={{ overflowX:'auto' }}>
-              <div style={{ fontSize:9,color:C.dim,textTransform:'uppercase',letterSpacing:'.1em',fontWeight:700,fontFamily:"'DM Mono'",marginBottom:6 }}>Contraste Diccionario vs. Candidato</div>
-              <table className="detail-table">
-                <thead><tr><th>Competencia</th><th>Requerido</th><th>Observado</th><th>Evidencia</th><th>Score</th><th>Brecha</th></tr></thead>
-                <tbody>
-                  {c.competencyContrast.map((row,i)=>(
-                    <tr key={i}>
-                      <td style={{ fontWeight:600,color:C.navy,fontSize:11 }}>{row.competencia}</td>
-                      <td><span style={{ fontFamily:"'DM Mono'",fontSize:10,color:C.navy,fontWeight:600 }}>● {row.nivelRequerido}</span></td>
-                      <td><span style={{ fontFamily:"'DM Mono'",fontSize:10,color:scoreColor(row.score),fontWeight:600 }}>◎ {row.nivelObservado}</span></td>
-                      <td style={{ color:C.muted,fontSize:11,maxWidth:200 }}>{row.evidencia}</td>
-                      <td><span style={{ fontFamily:"'DM Mono'",fontWeight:700,fontSize:13,color:scoreColor(row.score) }}>{row.score}</span></td>
-                      <td><BrechaBadge val={row.brecha}/></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── COMPARATIVE PANEL ────────────────────────────────────────────────────────
-function ComparativePanel({ compareResults, onExportCSV }) {
-  const { profile, competencies, full } = compareResults
-  // Usar profile como fuente principal de nombres (más liviano, siempre devuelve todos los CVs)
-  // full puede truncarse con 3+ candidatos por límite de tokens
-  const allNames = [...new Set([
-    ...(profile?.candidates||[]).map(c=>c.name),
-    ...(full?.candidates||[]).map(c=>c.name),
-    ...(competencies?.candidates||[]).map(c=>c.name),
-  ])]
-  const find = (res,name) => res?.candidates?.find(c=>c.name===name)
-  const matrix = allNames.map(name=>{
-    const p=find(profile,name),co=find(competencies,name),f=find(full,name)
-    const scores=[p?.score,co?.score,f?.score].filter(s=>s!=null)
-    const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0
-    return { name, p, co, f, avg, reco:f?.recommendation||co?.recommendation||p?.recommendation }
-  }).sort((a,b)=>b.avg-a.avg)
-
-  // Ganador
-  const winner = matrix[0]
-  const winnerReco = RECO[winner?.reco] || RECO['RESERVA']
-
-  // Competencias comunes para radar comparativo
-  const allComps = {}
-  matrix.forEach(row => {
-    const comps = row.f?.competencies||row.co?.competencies||{}
-    Object.keys(comps).slice(0,6).forEach(k => { allComps[k] = true })
-  })
-  const compKeys = Object.keys(allComps).slice(0,6)
-
-  return (
-    <div>
       {/* Tabla comparativa */}
       <div className="bp" style={{ marginBottom:16, overflowX:'auto' }}>
         <div className="bp-title">Tabla Comparativa por Tipo de Análisis</div>
@@ -1040,23 +819,6 @@ function ComparativePanel({ compareResults, onExportCSV }) {
       </div>
 
       <div className="bottom-grid">
-        {/* Radar comparativo */}
-        <div className="bp">
-          <div className="bp-title">Comparativa de Competencias Clave</div>
-          {compKeys.length>0&&matrix.slice(0,3).map((row,i)=>{
-            const comps=row.f?.competencies||row.co?.competencies
-            if(!comps) return null
-            const colors=[C.navy,C.accent,C.red]
-            return (
-              <div key={i} style={{ marginBottom:14 }}>
-                <div style={{ fontSize:11,fontWeight:600,color:colors[i],marginBottom:6,fontFamily:"'DM Mono'" }}>
-                  ● {row.name}
-                </div>
-                <RadarChart competencies={comps} color={colors[i]}/>
-              </div>
-            )
-          })}
-        </div>
 
         {/* Matrix scores por competencia */}
         <div className="bp">
@@ -1146,8 +908,6 @@ export default function App() {
   const [jobFile, setJobFile]             = useState(null)
   const [profileData, setProfileData]     = useState(null)
   const [profileLoading, setProfileLoading] = useState(false)
-  const [competencyDict, setCompetencyDict] = useState(null)
-  const [competencyLoading, setCompetencyLoading] = useState(false)
   const [cvFiles, setCvFiles]             = useState([])
   const [mode, setMode]                   = useState('profile')
   const [loading, setLoading]             = useState(false)
@@ -1163,11 +923,6 @@ export default function App() {
   const [activeHistoryId, setActiveHistoryId] = useState(null)
   // Opción C: modo inteligente automático vs. personalizado
   const [showAdvanced, setShowAdvanced]   = useState(false)
-  // Marco competencial — lista de competencias confirmadas para el análisis
-  const [compFramework, setCompFramework] = useState(null)   // null=no definido, []=vacío, [...]=listo
-  const [compFrameworkLoading, setCompFrameworkLoading] = useState(false)
-  const [editingComp, setEditingComp]     = useState(null)   // competencia que se está editando
-  const [newCompInput, setNewCompInput]   = useState('')
   const jobRef = useRef(), cvRef = useRef()
 
   const notify = (icon, msg, type='s') => {
@@ -1176,376 +931,10 @@ export default function App() {
   }
 
 
-  async function extractCompFramework() {
-    setCompFrameworkLoading(true)
-    try {
-      const res = await fetch('/api/analyze', {
-        method:'POST', headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({
-          model:'claude-haiku-4-5-20251001', max_tokens:800,
-          system:'Extrae las competencias o habilidades requeridas del perfil de cargo. Búscalas en cualquier sección: "Competencias", "Habilidades", "Capacidades", ítems numerados o con código (C1, C2...), o cualquier lista de atributos del candidato. Si no hay competencias explícitas, infiere las más relevantes según las funciones del cargo. Devuelve solo los nombres, sin definiciones. Solo JSON: {"competencias":["nombre1","nombre2",...]}. Máximo 8. Sin markdown, sin backticks.',
-          messages:[{ role:'user', content:`PERFIL:\n${jobFile?.content?.slice(0,5000)||''}` }]
-        }),
-      })
-      const data = await res.json()
-      const raw = data.content?.map(b=>b.text||'').join('')||''
-      const start = raw.indexOf('{')
-      const end = raw.lastIndexOf('}')
-      if (start !== -1 && end !== -1) {
-        const parsed = JSON.parse(raw.slice(start, end+1))
-        if (parsed.competencias?.length) {
-          setCompFramework(parsed.competencias)
-          notify('✓', `${parsed.competencias.length} competencias extraídas`)
-        }
-      }
-    } catch(e) { notify('⚠','Error al extraer competencias','w') }
-    finally { setCompFrameworkLoading(false) }
-  }
-
-  function confirmCompFramework(list) {
-    setCompFramework(list.filter(c=>c.trim()))
-    notify('✓','Marco competencial confirmado')
-  }
-
-  function resetCompFramework() {
-    setCompFramework(null)
-    setNewCompInput('')
-  }
-
-  async function callExtractAPI(systemPrompt, userContent) {
-    const res = await fetch('/api/analyze', {
-      method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1200, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
-    })
-    if (!res.ok) {
-      const errData = await res.json().catch(()=>({}))
-      throw new Error(errData?.error?.message || `HTTP ${res.status}`)
-    }
-    const data = await res.json()
-    if (data.error) throw new Error(`API: ${data.error.message||JSON.stringify(data.error)}`)
-    const raw = data.content?.map(b=>b.text||'').join('')||''
-    if (!raw) throw new Error(`Sin respuesta (stop: ${data.stop_reason||'?'})`)
-    // Extraer JSON limpio — maneja: backticks, "json {", texto adicional
-    let clean = raw.trim()
-    // 1. Si viene en bloque ```json ... ```
-    const mdMatch = clean.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (mdMatch) {
-      clean = mdMatch[1].trim()
-    } else {
-      // 2. Extraer desde el primer { hasta el } balanceado
-      const start = clean.indexOf('{')
-      if (start !== -1) {
-        let depth = 0, end = -1
-        for (let i = start; i < clean.length; i++) {
-          if (clean[i] === '{') depth++
-          else if (clean[i] === '}') { depth--; if (depth === 0) { end = i; break } }
-        }
-        if (end !== -1) clean = clean.slice(start, end + 1)
-      }
-    }
-    try { return JSON.parse(clean) }
-    catch {
-      const m = clean.match(/\{[\s\S]*\}/)
-      if (m) { try { return JSON.parse(m[0]) } catch {} }
-      throw new Error(`JSON inválido: ${clean.slice(0,80)}`)
-    }
-  }
-
-  async function handleJobFiles(fileList) {
-    const file = fileList[0]; if (!file) return
-    setJobFile({ name:file.name, content:'', status:'loading' })
-    setProfileData(null); setCompetencyDict(null); setResults(null); setCompareResults(null)
-    try {
-      const extracted = await extractText(file, msg=>setLoadMsg(msg))
-      setJobFile({ name:file.name, content:extracted, status:'ready' })
-      notify('✓','Perfil cargado — extrayendo estructura…')
-      await extractProfileStructure(extracted, file.name)
-      // Pre-llenar framework con competencias explícitas del perfil (si las hay)
-      extractCompetencyDict(extracted, file.name).catch(()=>{})
-    } catch(e) {
-      setJobFile({ name:file.name, content:'', status:'error' })
-      notify('✗',`Error: ${e.message}`,'e')
-    }
-  }
-
-  async function extractProfileStructure(content, fileName) {
-    setProfileLoading(true)
-    try {
-      const parsed = await callExtractAPI(PROMPT_EXTRACT_PROFILE, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,4000)}`)
-      setProfileData(parsed)
-      notify('✓',`Estructura extraída — ${parsed.nombreCargo||'cargo identificado'}`)
-    } catch(e) { notify('⚠',`Perfil: ${e.message}`,'w') }
-    finally { setProfileLoading(false); setLoadMsg('') }
-  }
-
-  async function extractCompetencyDict(content, fileName) {
-    setCompetencyLoading(true)
-    try {
-      // Intentar con 2500 chars primero, luego con 1500 si falla
-      let parsed = null
-      try {
-        parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `PERFIL (${fileName}):\n${content.slice(0,5000)}`)
-      } catch {
-        try {
-          parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `PERFIL (${fileName}):\n${content.slice(0,3500)}`)
-        } catch { /* silencioso — el 360° funciona igual sin diccionario */ }
-      }
-      if (parsed) {
-        setCompetencyDict(parsed)
-        // Notificación silenciosa — no interrumpir al usuario
-      }
-    } catch { /* silencioso */ }
-    finally { setCompetencyLoading(false) }
-  }
-
-  async function handleCvFiles(fileList) {
-    const files = Array.from(fileList); if (!files.length) return
-    const placeholders = files.map(f=>({ name:f.name, content:'', status:'loading' }))
-    setCvFiles(prev => {
-      const base = prev.length
-      const next = [...prev, ...placeholders]
-      Promise.all(files.map(async (file,i) => {
-        try {
-          const content = await extractText(file, ()=>{
-            setCvFiles(p=>{ const n=[...p]; n[base+i]={ ...n[base+i], status:'ocr' }; return n })
-          })
-          setCvFiles(p=>{ const n=[...p]; n[base+i]={ name:file.name, content, status:'ready' }; return n })
-        } catch {
-          setCvFiles(p=>{ const n=[...p]; n[base+i]={ name:file.name, content:'', status:'error' }; return n })
-        }
-      })).then(()=>notify('✓',`${files.length} CV(s) procesados`))
-      return next
-    })
-  }
-
-  async function callAnalyze(modeId, cvList) {
-    const modeLabel = MODES.find(m=>m.id===modeId)?.label
-    let userPrompt = ''
-
-    // Texto del perfil — siempre disponible
-    const profileText = jobFile?.content?.slice(0, 1000) || ''
-
-    // Marco competencial confirmado por el usuario
-    const frameworkStr = compFramework?.length
-      ? `COMPETENCIAS A EVALUAR (marco confirmado): ${compFramework.join(', ')}`
-      : null
-
-    // Datos estructurados compactos (si están disponibles)
-    const compactProfile = profileData ? JSON.stringify({
-      cargo: profileData.nombreCargo,
-      estudios: profileData.estudios?.nivelRequerido,
-      carreras: profileData.estudios?.carrerasAceptadas?.slice(0,3),
-      expGeneral: profileData.experiencia?.generalAnios,
-      expEspecifica: profileData.experiencia?.especifica?.slice(0,3),
-      competencias: profileData.competencias?.slice(0,5),
-      condiciones: profileData.condicionesEspeciales?.slice(0,2),
-    }) : null
-
-    const compactDict = competencyDict ? JSON.stringify({
-      cargo: competencyDict.nombreCargo,
-      competencias: (competencyDict.competencias||[]).slice(0,6).map(c=>({
-        nombre: c.nombre, nivel: c.nivelRequerido, tipo: c.tipo,
-      }))
-    }) : null
-
-    // Construir prompt según modo — siempre incluir texto del perfil como fallback
-    if (modeId==='profile') {
-      userPrompt += compactProfile
-        ? `PERFIL ESTRUCTURADO: ${compactProfile}\n\n`
-        : `PERFIL DEL CARGO:\n${profileText}\n\n`
-      if (frameworkStr) userPrompt += `${frameworkStr}\n\n`
-    } else if (modeId==='competencies') {
-      userPrompt += compactDict
-        ? `DICCIONARIO COMPETENCIAS: ${compactDict}\n\n`
-        : `PERFIL DEL CARGO:\n${profileText}\n\n`
-    } else if (modeId==='full') {
-      userPrompt += compactProfile ? `PERFIL: ${compactProfile}\n\n` : `TEXTO CARGO:\n${profileText}\n\n`
-      if (frameworkStr) userPrompt += `${frameworkStr}\n\n`
-      else if (compactDict) userPrompt += `COMPETENCIAS: ${compactDict}\n\n`
-    } else {
-      userPrompt += `PERFIL:\n${profileText}\n\n`
-    }
-
-    // CVs — texto reducido según modo
-    const cvMaxChars = modeId==='full' ? 800 : 1000
-    cvList.forEach((cv,i)=>{ userPrompt += `CV ${i+1} (${cv.name}):\n${cv.content.slice(0,cvMaxChars)}\n\n` })
-
-    // max_tokens por modo
-    // max_tokens dinámico: base + extra por cada competencia adicional sobre 5
-    const compCount = compFramework?.length || 5
-    const extraTokens = Math.max(0, compCount - 5) * 150  // ~150 tokens por competencia extra
-    const baseTokens = { full:3500, compare:3000, competencies:1800, profile:1600 }[modeId] || 1800
-    const maxTokens = modeId==='full' || modeId==='compare' ? baseTokens + extraTokens : baseTokens
-
-    const res = await fetch('/api/analyze', {
-      method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens: maxTokens,
-        system: PROMPTS[modeId],
-        messages:[{ role:'user', content:userPrompt }]
-      }),
-    })
-
-    if (!res.ok) {
-      const e = await res.json().catch(()=>({}))
-      throw new Error(e?.error?.message || `Error HTTP ${res.status}`)
-    }
-
-    const data = await res.json()
-    if (data.error) throw new Error(`API: ${data.error.message || JSON.stringify(data.error)}`)
-
-    const raw = data.content?.map(b=>b.text||'').join('')||''
-    if (!raw) throw new Error(`Sin respuesta de la API (stop: ${data.stop_reason||'?'})`)
-
-    // Extraer JSON limpio — soporta: con backticks, sin backticks, con texto adicional
-    let clean = raw.trim()
-    // 1. Si viene en bloque ```json ... ```
-    const mdMatch = clean.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (mdMatch) {
-      clean = mdMatch[1].trim()
-    } else {
-      // 2. Extraer desde el primer { hasta el último } balanceado
-      const start = clean.indexOf('{')
-      if (start !== -1) {
-        let depth = 0, end = -1
-        for (let i = start; i < clean.length; i++) {
-          if (clean[i] === '{') depth++
-          else if (clean[i] === '}') { depth--; if (depth === 0) { end = i; break } }
-        }
-        if (end !== -1) clean = clean.slice(start, end + 1)
-      }
-    }
-
-    // Parser con 4 estrategias
-    const tryParse = (str) => {
-      try { return JSON.parse(str) } catch {}
-      const m = str.match(/\{[\s\S]*\}/)
-      if (m) { try { return JSON.parse(m[0]) } catch {} }
-      let r = str.replace(/,\s*"[^"]*$/, '').replace(/,\s*\{[^}]*$/, '')
-      const oo = (r.match(/\{/g)||[]).length - (r.match(/\}/g)||[]).length
-      const oa = (r.match(/\[/g)||[]).length - (r.match(/\]/g)||[]).length
-      for(let i=0;i<Math.max(0,oa);i++) r+=']'
-      for(let i=0;i<Math.max(0,oo);i++) r+='}'
-      try { return JSON.parse(r) } catch {}
-      const lc = r.lastIndexOf('"recommendation"')
-      if (lc>50) { const e=r.indexOf('}',lc); if(e>0) { try { return JSON.parse(r.slice(0,e+1)+']}') } catch {} } }
-      return null
-    }
-
-    const parsed = tryParse(clean)
-    if (parsed?.candidates?.length > 0) return parsed
-    if (parsed?.candidates) return parsed
-
-    // Mostrar los primeros 200 chars del raw para diagnóstico
-    const preview = raw.slice(0,200).replace(/\n/g,' ')
-    throw new Error(`No se pudo parsear la respuesta. Vista previa: "${preview}"`)
-  }
-
-  const ready       = cvFiles.filter(f=>f.status==='ready')
-  const currentMode = MODES.find(m=>m.id===mode)
-
-  // Opción C: modo inteligente — detecta automáticamente el análisis óptimo
-  const smartMode   = ready.length >= 2 ? 'compare' : 'full'
-  const smartLabel  = ready.length >= 2 ? 'Vista Comparativa' : 'Análisis 360° Global'
-  const smartIcon   = ready.length >= 2 ? '⚡' : '🔬'
-  const smartCost   = ready.length >= 2
-    ? (MODES.find(m=>m.id==='compare')?.cost||4) * ready.length
-    : (MODES.find(m=>m.id==='full')?.cost||3) * ready.length
-  const smartDesc   = ready.length >= 2
-    ? `${ready.length} candidatos — ranking + comparativa + radar`
-    : '1 candidato — análisis curricular + competencias + 360°'
-
-  // El modo efectivo: en automático usa smartMode; en avanzado usa mode pero redirige competencies → full
-  const effectiveMode = showAdvanced
-    ? (mode === 'competencies' ? 'full' : mode)
-    : smartMode
-  const totalCost   = showAdvanced
-    ? (currentMode ? currentMode.cost * ready.length : 0)
-    : smartCost
-  const canAnalyze  = jobFile?.status==='ready' && ready.length>0 && !loading
-
-  const LOAD_STEPS = {
-    profile:      ['Procesando documentos','Contrastando perfil','Generando evaluación'],
-    competencies: ['Procesando documentos','Aplicando diccionario','Levantando evidencias'],
-    full:         ['Procesando documentos','Análisis curricular','Análisis competencial','Integrando 360°'],
-    compare:      ['Análisis de Perfil','Análisis 360° Completo'],
-  }
-  const steps = LOAD_STEPS[mode]||LOAD_STEPS.profile
-  const stepIdx = Math.max(0, steps.findIndex(s=>loadMsg.toLowerCase().includes(s.split(' ')[0].toLowerCase())))
-
-  async function analyze() {
-    setError('')
-    if (credits<totalCost) { notify('⚠',`Necesitas ${totalCost} créditos`,'e'); return }
-    setLoading(true); setResults(null); setCompareResults(null)
-    try {
-      const hId = Date.now()
-      const hDate = new Date().toLocaleString('es-CL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
-      const modeToRun = effectiveMode
-      const modeLabel = MODES.find(m=>m.id===modeToRun)?.label
-      const cvNames = ready.map(c=>c.name.replace(/\.pdf|\.docx|\.txt/i,'').slice(0,20)).join(', ')
-      const hLabel = `${modeLabel} — ${cvNames}`
-
-      if (modeToRun==='compare') {
-        // Solo 2 análisis: perfil curricular + 360° (que ya incluye competencias)
-        setLoadMsg('Analizando perfil curricular (1/2)…')
-        const pD = await callAnalyze('profile', ready).catch(()=>null)
-        setLoadMsg('Ejecutando análisis 360° completo (2/2)…')
-        const fD = await callAnalyze('full', ready).catch(()=>null)
-        // Usar full como fuente de competencias también
-        const newCompare = { profile:pD, competencies:fD, full:fD }
-        setCompareResults(newCompare)
-        setActiveTab('comparativa')
-        setHistory(h=>[{ id:hId, label:hLabel, date:hDate, mode:modeToRun, results:null, compareResults:newCompare },...h])
-        setActiveHistoryId(hId)
-      } else {
-        setLoadMsg(`Analizando ${ready.length} candidato(s)…`)
-        const parsed = await callAnalyze(modeToRun, ready)
-        const newResults = { candidates:parsed.candidates||[], mode:modeToRun }
-        setResults(newResults)
-        setActiveTab('resumen')
-        setHistory(h=>[{ id:hId, label:hLabel, date:hDate, mode:modeToRun, results:newResults, compareResults:null },...h])
-        setActiveHistoryId(hId)
-      }
-      setCredits(c=>c-totalCost)
-      notify('✓',`Análisis completado · ${totalCost} créditos`)
-    } catch(err) { setError(err.message); notify('✗','Error en el análisis','e') }
-    finally { setLoading(false); setLoadMsg('') }
-  }
-
-  function exportCSV() {
-    if (!compareResults) return
-    const { profile:p, competencies:co, full:f } = compareResults
-    const names=[...new Set([...(p?.candidates||[]),...(co?.candidates||[]),...(f?.candidates||[])].map(c=>c.name))]
-    const rows=[['Candidato','Score Perfil','Score Competencias','Score 360°','Promedio','Recomendación','Resumen']]
-    names.forEach(name=>{
-      const pr=p?.candidates?.find(c=>c.name===name)
-      const cr=co?.candidates?.find(c=>c.name===name)
-      const fr=f?.candidates?.find(c=>c.name===name)
-      const scores=[pr?.score,cr?.score,fr?.score].filter(s=>s!=null)
-      const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):''
-      rows.push([name,pr?.score??'',cr?.score??'',fr?.score??'',avg,fr?.recommendation||'',fr?.summary||pr?.summary||''])
-    })
-    const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')
-    const blob=new Blob(['\uFEFF'+csv],{ type:'text/csv;charset=utf-8;' })
-    const url=URL.createObjectURL(blob)
-    const a=document.createElement('a'); a.href=url; a.download=`MatchViaGeperex_${new Date().toISOString().slice(0,10)}.csv`
-    a.click(); URL.revokeObjectURL(url)
-    notify('⬇','CSV exportado')
-  }
-
-  function loadFromHistory(item) {
-    setResults(item.results)
-    setCompareResults(item.compareResults)
-    setActiveHistoryId(item.id)
-    setActiveTab(item.mode === 'compare' ? 'comparativa' : 'resumen')
-    notify('↩', `Análisis cargado`)
-  }
-
   function reset() {
-    setJobFile(null); setProfileData(null); setCompetencyDict(null); setCvFiles([])
+    setJobFile(null); setProfileData(null); setCvFiles([])
     setResults(null); setCompareResults(null); setError(''); setActiveTab('resumen')
-    setActiveHistoryId(null); setCompFramework(null); setNewCompInput('')
+    setActiveHistoryId(null)
     if (jobRef.current) jobRef.current.value=''
     if (cvRef.current) cvRef.current.value=''
     notify('↺','Reiniciado')
@@ -1587,7 +976,7 @@ export default function App() {
             {!jobFile ? (
               <DropZone icon="📄" label="Subir Perfil de Cargo" hint="PDF, DOCX o TXT" multiple={false} onFiles={handleJobFiles} inputRef={jobRef}/>
             ) : (
-              <SbFileItem name={jobFile.name} status={jobFile.status} onRemove={()=>{ setJobFile(null); setProfileData(null); setCompetencyDict(null); if(jobRef.current)jobRef.current.value='' }}/>
+              <SbFileItem name={jobFile.name} status={jobFile.status} onRemove={()=>{ setJobFile(null); setProfileData(null); if(jobRef.current)jobRef.current.value='' }}/>
             )}
             {profileLoading&&(
               <div style={{ display:'flex',alignItems:'center',gap:6,marginTop:6 }}>
@@ -1599,133 +988,6 @@ export default function App() {
               <div style={{ fontSize:9,color:C.greenLt,fontFamily:"'DM Mono'",marginTop:4 }}>✓ Estructura extraída</div>
             )}
           </div>
-
-          {/* ── MARCO COMPETENCIAL — visible cuando hay perfil cargado ── */}
-          {profileData && (
-            <div className="sb-section" style={{ borderLeft:`3px solid ${C.accent}` }}>
-              <div className="sb-section-title" style={{ marginBottom: compFramework ? 8 : 6 }}>
-                <div className="sb-step" style={{ background: compFramework ? C.green : C.accent }}>
-                  {compFramework ? '✓' : '⚡'}
-                </div>
-                <div>
-                  <div className="sb-label">Marco Competencial</div>
-                  <div className="sb-sublabel">
-                    {compFramework
-                      ? `${compFramework.length} competencias definidas`
-                      : profileData.competencias?.length
-                        ? 'Competencias detectadas en el perfil'
-                        : 'No se detectaron competencias explícitas'}
-                  </div>
-                </div>
-                {compFramework && (
-                  <button onClick={resetCompFramework} style={{
-                    marginLeft:'auto',background:'none',border:'none',cursor:'pointer',
-                    fontSize:9,color:C.sidebarMuted,fontFamily:"'DM Mono'",padding:'2px 4px',
-                  }} title="Resetear marco">✕</button>
-                )}
-              </div>
-
-              {/* CASO A: Framework ya confirmado — mostrar lista editable */}
-              {compFramework && (
-                <div>
-                  <div style={{ display:'flex',flexDirection:'column',gap:3,marginBottom:8 }}>
-                    {compFramework.map((comp,i)=>(
-                      <div key={i} style={{
-                        display:'flex',alignItems:'center',gap:6,
-                        background:'rgba(255,255,255,.06)',borderRadius:6,
-                        padding:'4px 8px',fontSize:10,color:C.sidebarText,
-                      }}>
-                        <span style={{ color:C.greenLt,flexShrink:0,fontSize:9 }}>✓</span>
-                        {editingComp===i ? (
-                          <input
-                            autoFocus
-                            defaultValue={comp}
-                            onBlur={e=>{
-                              const updated=[...compFramework]; updated[i]=e.target.value.trim()||comp
-                              setCompFramework(updated.filter(c=>c)); setEditingComp(null)
-                            }}
-                            onKeyDown={e=>{ if(e.key==='Enter'||e.key==='Escape') e.target.blur() }}
-                            style={{ flex:1,background:'rgba(255,255,255,.1)',border:'none',borderRadius:4,
-                              padding:'2px 5px',color:C.sidebarText,fontSize:10,outline:'none' }}
-                          />
-                        ) : (
-                          <span style={{ flex:1,cursor:'pointer' }} onClick={()=>setEditingComp(i)}>{comp}</span>
-                        )}
-                        <button onClick={()=>setCompFramework(compFramework.filter((_,j)=>j!==i))}
-                          style={{ background:'none',border:'none',cursor:'pointer',color:C.sidebarMuted,
-                            fontSize:11,padding:'0 2px',lineHeight:1 }}>×</button>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Agregar nueva competencia */}
-                  <div style={{ display:'flex',gap:4 }}>
-                    <input
-                      value={newCompInput}
-                      onChange={e=>setNewCompInput(e.target.value)}
-                      onKeyDown={e=>{ if(e.key==='Enter'&&newCompInput.trim()){
-                        setCompFramework([...compFramework,newCompInput.trim()]); setNewCompInput('')
-                      }}}
-                      placeholder="+ Agregar competencia"
-                      style={{ flex:1,background:'rgba(255,255,255,.06)',border:`1px solid ${C.sidebarDim}`,
-                        borderRadius:6,padding:'5px 8px',color:C.sidebarText,fontSize:9,
-                        fontFamily:"'DM Mono'",outline:'none' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* CASO B: Competencias explícitas en perfil — ofrecer confirmación */}
-              {!compFramework && profileData.competencias?.length > 0 && (
-                <div>
-                  <div style={{ fontSize:9,color:C.sidebarMuted,marginBottom:6 }}>
-                    Detectadas en el perfil — confirma para usarlas como referencia:
-                  </div>
-                  <div style={{ display:'flex',flexWrap:'wrap',gap:4,marginBottom:8 }}>
-                    {profileData.competencias.map((c,i)=>(
-                      <span key={i} style={{ fontSize:9,padding:'2px 7px',borderRadius:100,
-                        background:'rgba(201,133,58,.15)',border:`1px solid ${C.accent}30`,
-                        color:C.accent,fontFamily:"'DM Mono'" }}>{c}</span>
-                    ))}
-                  </div>
-                  <button onClick={()=>confirmCompFramework(profileData.competencias)} style={{
-                    width:'100%',padding:'7px',borderRadius:7,border:`1px solid ${C.accent}50`,
-                    background:'rgba(201,133,58,.12)',color:C.accent,cursor:'pointer',
-                    fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,
-                  }}>✓ Usar estas competencias</button>
-                </div>
-              )}
-
-              {/* CASO C: Sin competencias explícitas — ofrecer extracción GIA */}
-              {!compFramework && (!profileData.competencias || profileData.competencias.length === 0) && (
-                <div>
-                  <div style={{ fontSize:9,color:C.sidebarMuted,lineHeight:1.5,marginBottom:8 }}>
-                    El perfil no tiene competencias explícitas. Puedes extraerlas automáticamente con GIA.
-                  </div>
-                  <button
-                    onClick={extractCompFramework}
-                    disabled={compFrameworkLoading}
-                    style={{
-                      width:'100%',padding:'8px',borderRadius:7,border:`1px solid ${C.accent}50`,
-                      background: compFrameworkLoading ? 'rgba(255,255,255,.05)' : 'rgba(201,133,58,.12)',
-                      color: compFrameworkLoading ? C.sidebarMuted : C.accent,
-                      cursor: compFrameworkLoading ? 'wait' : 'pointer',
-                      fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,
-                      display:'flex',alignItems:'center',justifyContent:'center',gap:6,
-                    }}
-                  >
-                    {compFrameworkLoading ? (
-                      <><div className="spinner" style={{ width:12,height:12,borderWidth:1.5,borderColor:'rgba(255,255,255,.2)',borderTopColor:C.accent }}/> Extrayendo…</>
-                    ) : (
-                      <>⚡ Extraer competencias con GIA</>
-                    )}
-                  </button>
-                  <div style={{ fontSize:8,color:C.sidebarMuted,textAlign:'center',marginTop:4,fontFamily:"'DM Mono'" }}>
-                    Sin marco definido, el análisis será solo curricular
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Step 2 — CVs */}
           <div className="sb-section">
@@ -1886,7 +1148,7 @@ export default function App() {
                   >
                     <div style={{ fontSize:10,fontWeight:600,color:activeHistoryId===item.id ? C.accent : C.sidebarText,
                       whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>
-                      {item.mode==='compare' ? '⚡' : item.mode==='full' ? '🔬' : item.mode==='competencies' ? '🎯' : '📋'} {item.label}
+                      {item.mode==='compare' ? '⚡' : '📋'} {item.label}
                     </div>
                     <div style={{ fontSize:9,color:C.sidebarMuted,fontFamily:"'DM Mono'",marginTop:2 }}>{item.date}</div>
                   </button>
@@ -1978,41 +1240,11 @@ export default function App() {
                         <div className="bm-item"><span className="bm-label">Candidatos</span><span className="bm-val">{candidates.length}</span></div>
                         <div className="bm-item"><span className="bm-label">Fecha</span><span className="bm-val">{analysisDate}</span></div>
                         <div className="bm-item"><span className="bm-label">Tipo</span><span className="bm-val">{MODES.find(m=>m.id===results.mode)?.label}</span></div>
-                        {compFramework?.length > 0 && (
-                          <div className="bm-item"><span className="bm-label">Marco</span><span className="bm-val" style={{ color:C.green }}>{compFramework.length} competencias definidas</span></div>
-                        )}
+
                       </div>
                     </div>
                     <div style={{ display:'flex',flexDirection:'column',gap:6,alignItems:'flex-end',flexShrink:0 }}>
-                      {/* Badge metodología */}
-                      <div className="banner-badge">
-                        {compFramework?.length > 0 ? 'IA + Marco Competencial' : 'IA + Criterio Experto'}
-                      </div>
-                      {/* Aviso análisis curricular */}
-                      {!compFramework?.length && (
-                        <div style={{
-                          fontSize:9,color:C.amber,background:C.amberDim,
-                          border:`1px solid ${C.amber}30`,borderRadius:100,
-                          padding:'3px 10px',fontFamily:"'DM Mono'",fontWeight:600,
-                          whiteSpace:'nowrap',
-                        }} title="El análisis se basa en la información curricular del CV. Para evaluar competencias, define un marco competencial en el panel izquierdo.">
-                          ⚠ Basado únicamente en análisis curricular
-                        </div>
-                      )}
-                      {/* Botón SELVIA */}
-                      <div
-                        title="Pronto — Evaluación de competencias con entrevista estructurada SELVIA"
-                        style={{
-                          fontSize:9,color:C.dim,background:'transparent',
-                          border:`1px solid ${C.borderHi}`,borderRadius:100,
-                          padding:'3px 10px',fontFamily:"'DM Mono'",fontWeight:600,
-                          cursor:'not-allowed',opacity:.6,whiteSpace:'nowrap',
-                          display:'flex',alignItems:'center',gap:4,
-                        }}
-                      >
-                        🎯 Evaluar con SELVIA
-                        <span style={{ fontSize:8,background:C.border,borderRadius:100,padding:'1px 5px' }}>Pronto</span>
-                      </div>
+                      <div className="banner-badge">IA + Criterio Experto</div>
                     </div>
                   </div>
                 )}
@@ -2026,17 +1258,17 @@ export default function App() {
                     {/* Icono según tab */}
                     <div style={{
                       width:72, height:72, borderRadius:16,
-                      background: activeTab==='resumen' ? C.accentDim : activeTab==='competencias' ? `rgba(27,42,74,.08)` : `rgba(26,122,69,.08)`,
-                      border:`1px solid ${activeTab==='resumen' ? C.accent+'30' : activeTab==='competencias' ? C.navy+'20' : C.green+'25'}`,
+                      background: activeTab==='resumen' ? C.accentDim : `rgba(26,122,69,.08)`,
+                      border:`1px solid ${activeTab==='resumen' ? C.accent+'30' : C.green+'25'}`,
                       display:'flex', alignItems:'center', justifyContent:'center',
                       fontSize:30, marginBottom:20,
                     }}>
-                      {activeTab==='resumen' ? '📋' : activeTab==='competencias' ? '🎯' : '🔍'}
+                      {activeTab==='resumen' ? '📋' : '🔍'}
                     </div>
 
                     <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:18, color:C.navy, marginBottom:8 }}>
                       {activeTab==='resumen'  && 'Vista de Resumen no disponible'}
-                      {activeTab==='competencias' && 'Vista de Competencias no disponible'}
+
                       {activeTab==='detalle'  && 'Vista de Detalle no disponible'}
                     </div>
 
@@ -2044,11 +1276,6 @@ export default function App() {
                       {activeTab==='resumen' && (
                         <>
                           Ejecutaste una <strong style={{ color:C.navy }}>Vista Comparativa</strong>, que analiza los 3 modos en paralelo. Para ver el resumen individual de candidatos, ejecuta un análisis de tipo <strong style={{ color:C.accent }}>Análisis de Perfil</strong>, <strong style={{ color:C.accent }}>Competencias</strong> o <strong style={{ color:C.accent }}>360° Global</strong>.
-                        </>
-                      )}
-                      {activeTab==='competencias' && (
-                        <>
-                          Esta vista muestra el detalle competencial de análisis individuales. Para acceder a ella, ejecuta un análisis de tipo <strong style={{ color:C.accent }}>Análisis Competencias</strong> o <strong style={{ color:C.accent }}>360° Global</strong>.
                         </>
                       )}
                       {activeTab==='detalle' && (
@@ -2099,7 +1326,6 @@ export default function App() {
                         {candidates.filter(c=>c.competencies&&Object.keys(c.competencies).length>0).slice(0,2).map((c,i)=>(
                           <div key={i} className="bp">
                             <div className="bp-title">Radar — {c.name}</div>
-                            <RadarChart competencies={c.competencies} color={i===0?C.navy:C.accent}/>
                           </div>
                         ))}
                         {/* Recomendación del top candidato */}
@@ -2128,73 +1354,6 @@ export default function App() {
                     )}
                   </>
                 )}
-
-                {/* Tab: Competencias */}
-                {activeTab==='competencias'&&results&&(
-                  <div>
-                    {profileData&&<ProfileCard profile={profileData}/>}
-                    <div style={{
-                      display:'grid', gap:16,
-                      gridTemplateColumns: candidates.length===1
-                        ? '1fr'
-                        : candidates.length===2
-                          ? '1fr 1fr'
-                          : 'repeat(auto-fill,minmax(340px,1fr))'
-                    }}>
-                    {candidates.filter(c=>c.competencies||c.competencyContrast).map((c,i)=>(
-                      <div key={i} className="bp" style={{ marginBottom:0 }}>
-                        <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
-                          <DonutChart score={c.score} size={48}/>
-                          <div>
-                            <div style={{ fontFamily:"'Syne'",fontWeight:700,fontSize:14,color:C.navy }}>{c.name}</div>
-                            <span className="reco-badge" style={{ color:RECO[c.recommendation]?.color||C.navy,background:RECO[c.recommendation]?.bg||C.navyDim,borderColor:RECO[c.recommendation]?.border||C.navy,fontSize:9 }}>
-                              {RECO[c.recommendation]?.label}
-                            </span>
-                          </div>
-                        </div>
-                        {c.competencies&&Object.keys(c.competencies).length>0&&(
-                          <div style={{
-                            display:'grid',
-                            gridTemplateColumns: candidates.length===1 ? '1fr 1fr' : '1fr',
-                            gap:16, alignItems:'start'
-                          }}>
-                            <div>
-                              <div style={{ fontSize:9,color:C.dim,textTransform:'uppercase',letterSpacing:'.1em',fontFamily:"'DM Mono'",fontWeight:700,marginBottom:8 }}>Scores por competencia</div>
-                              {Object.entries(c.competencies).map(([k,v])=><BarRow key={k} label={k} value={v}/>)}
-                            </div>
-                            {candidates.length===1&&<RadarChart competencies={c.competencies} color={C.navy}/>}
-                          </div>
-                        )}
-                        {candidates.length>1&&c.competencies&&Object.keys(c.competencies).length>0&&(
-                          <div style={{ marginTop:12 }}>
-                            <RadarChart competencies={c.competencies} color={i===0?C.navy:C.accent}/>
-                          </div>
-                        )}
-                        {c.competencyContrast?.length>0&&(
-                          <div style={{ marginTop:14,overflowX:'auto' }}>
-                            <table className="detail-table">
-                              <thead><tr><th>Competencia</th><th>Requerido</th><th>Observado</th><th>Evidencia</th><th>Score</th><th>Brecha</th></tr></thead>
-                              <tbody>
-                                {c.competencyContrast.map((row,j)=>(
-                                  <tr key={j}>
-                                    <td style={{ fontWeight:600,color:C.navy,fontSize:11 }}>{row.competencia}</td>
-                                    <td><span style={{ fontFamily:"'DM Mono'",fontSize:10,color:C.navy,fontWeight:600 }}>● {row.nivelRequerido}</span></td>
-                                    <td><span style={{ fontFamily:"'DM Mono'",fontSize:10,color:scoreColor(row.score),fontWeight:600 }}>◎ {row.nivelObservado}</span></td>
-                                    <td style={{ color:C.muted,fontSize:11,maxWidth:180 }}>{row.evidencia}</td>
-                                    <td><span style={{ fontFamily:"'DM Mono'",fontWeight:700,fontSize:13,color:scoreColor(row.score) }}>{row.score}</span></td>
-                                    <td><BrechaBadge val={row.brecha}/></td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Tab: Detalle */}
                 {activeTab==='detalle'&&results&&(
                   <div>
