@@ -1537,7 +1537,7 @@ export default function App() {
               </div>
             )}
             {profileData&&!profileLoading&&(
-              <div style={{ fontSize:9,color:C.greenLt,fontFamily:"'DM Mono'",marginTop:4 }}>✓ Estructura extraída · {competencyDict?.competencias?.length??'?'} competencias</div>
+              <div style={{ fontSize:9,color:C.greenLt,fontFamily:"'DM Mono'",marginTop:4 }}>✓ Estructura extraída</div>
             )}
           </div>
 
