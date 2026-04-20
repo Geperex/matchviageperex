@@ -948,6 +948,28 @@ export default function App() {
   const candidates = results?.candidates||[]
   const analysisDate = new Date().toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
 
+  // Variables de modo inteligente
+  const ready       = cvFiles.filter(f=>f.status==='ready')
+  const smartMode   = ready.length >= 2 ? 'compare' : 'profile'
+  const smartLabel  = ready.length >= 2 ? 'Vista Comparativa' : 'Análisis de Perfil'
+  const smartIcon   = ready.length >= 2 ? '⚡' : '📋'
+  const smartCost   = (MODES.find(m=>m.id===smartMode)?.cost||2) * Math.max(ready.length,1)
+  const smartDesc   = ready.length >= 2
+    ? `${ready.length} candidatos — ranking curricular comparativo`
+    : '1 candidato — análisis curricular contra el perfil'
+  const effectiveMode = showAdvanced ? mode : smartMode
+  const totalCost   = showAdvanced
+    ? (MODES.find(m=>m.id===mode)?.cost||2) * Math.max(ready.length,1)
+    : smartCost
+  const canAnalyze  = jobFile?.status==='ready' && ready.length>0 && !loading
+
+  const LOAD_STEPS = {
+    profile: ['Procesando documentos','Contrastando perfil','Generando evaluación'],
+    compare: ['Analizando candidatos','Generando ranking','Completando comparativa'],
+  }
+  const steps   = LOAD_STEPS[effectiveMode] || LOAD_STEPS.profile
+  const stepIdx = Math.max(0, steps.findIndex(s=>loadMsg.toLowerCase().includes(s.split(' ')[0].toLowerCase())))
+
   // ─── RENDER ─────────────────────────────────────────────────────────────────
   return (
     <>
