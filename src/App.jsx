@@ -877,11 +877,16 @@ ${content.slice(0, 4000)}`
   async function handleCvFiles(fileList) {
     const files = Array.from(fileList)
     if (!files.length) return
-    const placeholders = files.map(f => ({ name: f.name, content: '', status: 'loading' }))
+    // Límite de 3 CVs
+    const slotsLeft = Math.max(0, 3 - cvFiles.length)
+    if (slotsLeft === 0) { notify('⚠', 'Máximo 3 CVs permitidos', 'e'); return }
+    const filesToAdd = files.slice(0, slotsLeft)
+    if (files.length > slotsLeft) notify('⚠', `Solo se añadieron ${slotsLeft} CV(s) — límite 3`, 'w')
+    const placeholders = filesToAdd.map(f => ({ name: f.name, content: '', status: 'loading' }))
     setCvFiles(prev => {
       const base = prev.length
       const next = [...prev, ...placeholders]
-      Promise.all(files.map(async (file, i) => {
+      Promise.all(filesToAdd.map(async (file, i) => {
         try {
           const content = await extractText(file, () => {
             setCvFiles(p => { const n = [...p]; n[base + i] = { ...n[base + i], status: 'ocr' }; return n })
@@ -890,7 +895,7 @@ ${content.slice(0, 4000)}`
         } catch {
           setCvFiles(p => { const n = [...p]; n[base + i] = { name: file.name, content: '', status: 'error' }; return n })
         }
-      })).then(() => notify('✓', `${files.length} CV(s) procesados`))
+      })).then(() => notify('✓', `${filesToAdd.length} CV(s) procesados`))
       return next
     })
   }
@@ -900,20 +905,22 @@ ${content.slice(0, 4000)}`
     let userPrompt = ''
 
     if (profileData) {
-      userPrompt += `CUADRO RESUMEN ESTRUCTURADO DEL CARGO:\n${JSON.stringify(profileData, null, 2)}\n\n`
-      userPrompt += `PERFIL ORIGINAL (${jobFile.name}):\n${jobFile.content.slice(0, 1500)}\n\n`
+      // Perfil compacto para reducir tokens de input
+      const compactProfile = JSON.stringify({ cargo: profileData.nombreCargo, estudios: profileData.estudios?.nivelRequerido, carreras: profileData.estudios?.carrerasAceptadas?.slice(0,3), expGeneral: profileData.experiencia?.generalAnios, expEspecifica: profileData.experiencia?.especifica?.slice(0,3), condiciones: profileData.condicionesEspeciales?.slice(0,2) })
+      userPrompt += `PERFIL ESTRUCTURADO: ${compactProfile}\n\nTEXTO CARGO:\n${jobFile.content.slice(0, 800)}\n\n`
     } else {
       userPrompt += `PERFIL DEL CARGO (${jobFile.name}):\n${jobFile.content.slice(0, 2000)}\n\n`
     }
 
-    cvList.forEach((cv, i) => { userPrompt += `--- CV ${i + 1}: ${cv.name} ---\n${cv.content.slice(0, 1500)}\n\n` })
+    const cvMaxChars = cvList.length >= 2 ? 900 : 1200
+    cvList.forEach((cv, i) => { userPrompt += `--- CV ${i + 1}: ${cv.name} ---\n${cv.content.slice(0, cvMaxChars)}\n\n` })
 
     const res = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 3500,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2500,
         system: PROMPTS[modeId],
         messages: [{ role: 'user', content: userPrompt }],
       }),
@@ -1079,7 +1086,7 @@ ${content.slice(0, 4000)}`
           {/* Step 2 */}
           <div className="glow-card fade-up" style={{ padding: '18px 20px', animationDelay: '.1s' }}>
             <StepHeader n="2" label="CVs Candidatos" />
-            <DropZone icon="👥" label="Subir CVs" hint=".txt · .pdf · .docx · Múltiples" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
+            <DropZone icon="👥" label="Subir CVs (máx. 3)" hint=".txt · .pdf · .docx · Máximo 3 CVs" multiple={true} onFiles={handleCvFiles} inputRef={cvRef} />
             {cvFiles.length > 0 && (
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 200, overflowY: 'auto' }}>
                 {cvFiles.map((cv, i) => <FileItem key={i} name={cv.name} status={cv.status} onRemove={() => setCvFiles(p => p.filter((_, j) => j !== i))} />)}
