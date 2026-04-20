@@ -38,8 +38,8 @@ const C = {
 }
 
 // ─── PROMPTS (sin cambios) ────────────────────────────────────────────────────
-const PROMPT_EXTRACT_PROFILE = `Extrae la estructura del perfil de cargo. Solo JSON válido, sin markdown:
-{"nombreCargo":"string","area":"string|null","dependencia":"string|null","mision":"string|null","funciones":["string"],"estudios":{"nivelRequerido":"string|null","carrerasAceptadas":["string"],"requisitosAdicionales":"string|null"},"experiencia":{"generalAnios":"string|null","especifica":["string"],"sectoresDeseados":["string"]},"competencias":["string"],"conocimientosTecnicos":["string"],"idiomas":"string|null","condicionesEspeciales":["string"],"remuneracion":"string|null","jornada":"string|null","lugarTrabajo":"string|null"}`
+const PROMPT_EXTRACT_PROFILE = `Extrae la estructura del perfil de cargo. IMPORTANTE: el campo "competencias" debe contener TODOS los nombres de competencias mencionadas, incluyendo las que tengan código (C1, C2...), las que estén en secciones como "COMPETENCIAS PARA EL EJERCICIO DEL CARGO", "VALORES", o similares. Extrae solo el nombre, no la definición. Solo JSON válido, sin markdown:
+{"nombreCargo":"string","area":"string|null","dependencia":"string|null","mision":"string|null","funciones":["string"],"estudios":{"nivelRequerido":"string|null","carrerasAceptadas":["string"],"requisitosAdicionales":"string|null"},"experiencia":{"generalAnios":"string|null","especifica":["string"],"sectoresDeseados":["string"]},"competencias":["Nombre competencia 1","Nombre competencia 2"],"conocimientosTecnicos":["string"],"idiomas":"string|null","condicionesEspeciales":["string"],"remuneracion":"string|null","jornada":"string|null","lugarTrabajo":"string|null"}`
 
 const PROMPT_EXTRACT_COMPETENCIES = `Extrae las competencias del perfil de cargo (5-8 competencias). Solo JSON válido, sin markdown:
 {"nombreCargo":"string","competencias":[{"nombre":"string","tipo":"CONDUCTUAL|TECNICA|LIDERAZGO|GESTION","definicion":"string","nivelRequerido":"BASICO|INTERMEDIO|ALTO|CRITICO","indicadores":["string"],"fuente":"EXPLICITA|INFERIDA"}]}`
@@ -1179,8 +1179,8 @@ export default function App() {
         method:'POST', headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({
           model:'claude-haiku-4-5-20251001', max_tokens:800,
-          system:'Extrae las competencias requeridas del perfil de cargo. Responde SOLO con JSON: {"competencias":["Competencia 1","Competencia 2",...]}. Máximo 8 competencias. Sin markdown, sin backticks.',
-          messages:[{ role:'user', content:`PERFIL:\n${jobFile?.content?.slice(0,2000)||''}` }]
+          system:'Extrae las competencias para el ejercicio del cargo. Busca secciones como COMPETENCIAS, COMPETENCIAS PARA EL EJERCICIO DEL CARGO, o competencias con código C1/C2/etc. Responde SOLO con JSON: {"competencias":["Nombre Competencia 1","Nombre Competencia 2",...]}. Máximo 8 competencias, solo el nombre sin definición. Sin markdown, sin backticks.',
+          messages:[{ role:'user', content:`PERFIL:\n${jobFile?.content?.slice(0,5000)||''}` }]
         }),
       })
       const data = await res.json()
@@ -1211,7 +1211,7 @@ export default function App() {
   async function callExtractAPI(systemPrompt, userContent) {
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1200, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1500, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
@@ -1264,7 +1264,7 @@ export default function App() {
   async function extractProfileStructure(content, fileName) {
     setProfileLoading(true)
     try {
-      const parsed = await callExtractAPI(PROMPT_EXTRACT_PROFILE, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,3000)}`)
+      const parsed = await callExtractAPI(PROMPT_EXTRACT_PROFILE, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,5000)}`)
       setProfileData(parsed)
       notify('✓',`Estructura extraída — ${parsed.nombreCargo||'cargo identificado'}`)
     } catch(e) { notify('⚠',`Perfil: ${e.message}`,'w') }
@@ -1277,10 +1277,10 @@ export default function App() {
       // Intentar con 2500 chars primero, luego con 1500 si falla
       let parsed = null
       try {
-        parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `PERFIL (${fileName}):\n${content.slice(0,2500)}`)
+        parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `PERFIL (${fileName}):\n${content.slice(0,5000)}`)
       } catch {
         try {
-          parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `PERFIL (${fileName}):\n${content.slice(0,1500)}`)
+          parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `PERFIL (${fileName}):\n${content.slice(0,3500)}`)
         } catch { /* silencioso — el 360° funciona igual sin diccionario */ }
       }
       if (parsed) {
