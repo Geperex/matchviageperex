@@ -1209,9 +1209,10 @@ export default function App() {
     try {
       const extracted = await extractText(file, msg=>setLoadMsg(msg))
       setJobFile({ name:file.name, content:extracted, status:'ready' })
-      notify('✓','Perfil cargado — extrayendo estructura y competencias…')
+      notify('✓','Perfil cargado — extrayendo estructura…')
       await extractProfileStructure(extracted, file.name)
-      await extractCompetencyDict(extracted, file.name)
+      // Extracción de diccionario en background, sin bloquear ni notificar
+      extractCompetencyDict(extracted, file.name).catch(()=>{})
     } catch(e) {
       setJobFile({ name:file.name, content:'', status:'error' })
       notify('✗',`Error: ${e.message}`,'e')
@@ -1519,7 +1520,7 @@ export default function App() {
                 <div className="sb-label">Perfil del Cargo</div>
                 <div className="sb-sublabel">Define el perfil objetivo</div>
               </div>
-              {jobFile?.status==='ready'&&(
+              {profileData&&!profileLoading&&(
                 <span style={{ marginLeft:'auto',fontSize:9,fontWeight:700,color:C.greenLt,background:'rgba(34,160,90,.15)',border:'1px solid rgba(34,160,90,.3)',borderRadius:100,padding:'2px 8px',fontFamily:"'DM Mono'",flexShrink:0 }}>LISTO</span>
               )}
             </div>
@@ -1528,12 +1529,10 @@ export default function App() {
             ) : (
               <SbFileItem name={jobFile.name} status={jobFile.status} onRemove={()=>{ setJobFile(null); setProfileData(null); setCompetencyDict(null); if(jobRef.current)jobRef.current.value='' }}/>
             )}
-            {(profileLoading||competencyLoading)&&(
+            {profileLoading&&(
               <div style={{ display:'flex',alignItems:'center',gap:6,marginTop:6 }}>
                 <div className="spinner" style={{ width:10,height:10,borderWidth:1.5 }}/>
-                <span style={{ fontSize:9,color:C.sidebarMuted,fontFamily:"'DM Mono'" }}>
-                  {profileLoading?'Extrayendo estructura…':'Construyendo diccionario…'}
-                </span>
+                <span style={{ fontSize:9,color:C.sidebarMuted,fontFamily:"'DM Mono'" }}>Extrayendo estructura…</span>
               </div>
             )}
             {profileData&&!profileLoading&&(
