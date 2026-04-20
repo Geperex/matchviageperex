@@ -51,7 +51,7 @@ const PROMPTS = {
   profile: `Experto en selección de personas Chile. Metodología #MatchViaGeperex.
 INSTRUCCIÓN: JSON puro, SIN backticks, SIN markdown.
 Contrasta cada CV contra el perfil. Pondera: Formación 30%, Exp.General 25%, Exp.Específica 25%, Formación Comp. 10%, Condiciones 10%.
-{"candidates":[{"name":"string","fileName":"string","score":0,"recommendation":"CONTRATAR","summary":"2 oraciones","strengths":["string"],"gaps":["string"],"matchDetail":{"formacion":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaGeneral":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaEspecifica":{"requerido":"string","candidato":"string","cumple":"NO CUMPLE"},"formacionComplementaria":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"condicionesEspeciales":{"requerido":"string","candidato":"string","cumple":"CUMPLE"}},"scoreBreakdown":{"Formación Académica":0,"Experiencia General":0,"Experiencia Específica":0,"Formación Complementaria":0,"Condiciones Especiales":0}}]}
+{"candidates":[{"name":"string","fileName":"string","score":0,"recommendation":"CONTRATAR","summary":"1 oración","strengths":["string","string"],"gaps":["string"],"matchDetail":{"formacion":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaGeneral":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaEspecifica":{"requerido":"string","candidato":"string","cumple":"NO CUMPLE"},"formacionComplementaria":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"condicionesEspeciales":{"requerido":"string","candidato":"string","cumple":"CUMPLE"}},"scoreBreakdown":{"Formación Académica":0,"Experiencia General":0,"Experiencia Específica":0,"Formación Complementaria":0,"Condiciones Especiales":0}}]}
 recommendation:"CONTRATAR"|"RESERVA"|"NO RECOMENDAR". cumple:"CUMPLE"|"CUMPLE PARCIALMENTE"|"NO CUMPLE". Ordena por score desc.`,
 
 }
@@ -575,7 +575,7 @@ function ComparativePanel({ compareResults, onExportCSV }) {
     <div>
       {/* Sub-tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        {[{ id: 'matrix', label: '📊 Matriz Cruzada' }, { id: 'radars', label: '🕸 Radares' }, { id: 'ranking', label: '🏆 Ranking Final' }]
+        {[{ id: 'matrix', label: '📊 Tabla Comparativa' }, { id: 'ranking', label: '🏆 Ranking Final' }]
           .map(t => <button key={t.id} onClick={() => setTab(t.id)} style={tabStyle(tab === t.id)}>{t.label}</button>)}
         <button onClick={onExportCSV} style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: 7, border: `1px solid ${C.green}40`, background: C.greenDim, color: C.green, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
           ⬇ Exportar CSV
@@ -817,7 +817,7 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2500,
+        max_tokens: 3000,
         system: PROMPTS[modeId],
         messages: [{ role: 'user', content: userPrompt }],
       }),
@@ -828,31 +828,50 @@ export default function App() {
     }
     const data = await res.json()
     const raw = data.content?.map(b => b.text || '').join('') || ''
-    const clean = raw.replace(/```json|```/g, '').trim()
-    // Intento de reparación si el JSON viene truncado
-    let repaired = clean
-    // Contar llaves y corchetes para detectar truncamiento
-    const openBraces   = (repaired.match(/\{/g) || []).length
-    const closeBraces  = (repaired.match(/\}/g) || []).length
-    const openBrackets = (repaired.match(/\[/g) || []).length
-    const closeBrackets= (repaired.match(/\]/g) || []).length
-    // Si está truncado, cerrar estructuras abiertas
-    if (openBraces !== closeBraces || openBrackets !== closeBrackets) {
-      // Truncar en el último objeto completo válido
-      const lastValidObj = repaired.lastIndexOf('},')
-      if (lastValidObj > 100) {
-        repaired = repaired.slice(0, lastValidObj + 1) + ']}' 
+
+    // Extraer JSON limpio — maneja backticks y texto extra
+    let clean = raw.trim()
+    const mdMatch = clean.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (mdMatch) {
+      clean = mdMatch[1].trim()
+    } else {
+      const start = clean.indexOf('{')
+      if (start > 0) clean = clean.slice(start)
+    }
+
+    // Reparar JSON truncado: extraer candidatos completos
+    const repairJSON = (str) => {
+      // 1. Intento directo
+      try { return JSON.parse(str) } catch {}
+
+      // 2. Cerrar estructuras abiertas
+      let r = str
+      // Eliminar último candidato incompleto (sin "recommendation")
+      const lastComplete = r.lastIndexOf('"recommendation"')
+      if (lastComplete > 0) {
+        const afterReco = r.indexOf('}', lastComplete + 20)
+        if (afterReco > 0) {
+          r = r.slice(0, afterReco + 1)
+          // Cerrar array y objeto raíz
+          const ob = (r.match(/\{/g)||[]).length - (r.match(/\}/g)||[]).length
+          const oa = (r.match(/\[/g)||[]).length - (r.match(/\]/g)||[]).length
+          for(let i=0;i<Math.max(0,oa);i++) r += ']'
+          for(let i=0;i<Math.max(0,ob);i++) r += '}'
+          try { return JSON.parse(r) } catch {}
+        }
       }
+
+      // 3. Buscar objeto principal
+      const m = str.match(/\{[\s\S]*\}/)
+      if (m) { try { return JSON.parse(m[0]) } catch {} }
+
+      return null
     }
-    try { return JSON.parse(repaired) }
-    catch {
-      try {
-        const m = repaired.match(/\{[\s\S]*\}/)
-        if (m) return JSON.parse(m[0])
-      } catch {}
-      throw new Error('Respuesta de IA incompleta — intenta con menos CVs o un análisis más simple.')
-    }
-  }
+
+    const parsed = repairJSON(clean)
+    if (parsed?.candidates?.length > 0) return parsed
+    if (parsed?.candidates) return parsed
+    throw new Error('Respuesta de IA incompleta — intenta con menos CVs o un análisis más simple.')
 
   const ready = cvFiles.filter(f => f.status === 'ready')
   const currentMode = MODES.find(m => m.id === mode)
@@ -1055,7 +1074,7 @@ export default function App() {
             <div className="glow-card" style={{ padding: '48px 28px', textAlign: 'center' }}>
               <div className="spinner" style={{ margin: '0 auto 16px' }} />
               <div style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{loadMsg || 'Procesando…'}</div>
-              {mode === 'compare' && <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados ejecutándose en paralelo</div>}
+              {mode === 'compare' && <div style={{ fontSize: 12, color: C.muted }}>Analizando candidatos en comparativa curricular</div>}
             </div>
           )}
 
@@ -1075,7 +1094,7 @@ export default function App() {
             <div>
               <div style={{ marginBottom: 20 }}>
                 <h2 style={{ fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Vista Comparativa</h2>
-                <div style={{ fontSize: 12, color: C.muted }}>3 análisis con prompts especializados · Comparación matricial · Radar charts · Exportación CSV</div>
+                <div style={{ fontSize: 12, color: C.muted }}>Ranking curricular de candidatos · Exportación CSV</div>
               </div>
               <ComparativePanel compareResults={compareResults} onExportCSV={exportCSV} />
             </div>
@@ -1139,4 +1158,6 @@ function StepHeader({ n, label }) {
       <div style={{ fontFamily: "'DM Sans'", fontWeight: 700, fontSize: 13 }}>{label}</div>
     </div>
   )
+}
+
 }
