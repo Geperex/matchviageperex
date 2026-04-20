@@ -112,7 +112,7 @@ recommendation: "CONTRATAR" | "RESERVA" | "NO RECOMENDAR". brecha: "SIN BRECHA" 
 INSTRUCCIÓN CRÍTICA: Responde SOLO con JSON puro, SIN backticks, SIN markdown, SIN texto antes o después.
 MODO: ANÁLISIS 360° — score = (scoreProfile*0.60)+(scoreCompetencies*0.40)
 matchDetail: solo los campos cumple de cada criterio (formacion, experienciaGeneral, experienciaEspecifica, formacionComplementaria, condicionesEspeciales).
-competencyContrast: max 5 competencias, evidencia en 1 frase corta.
+competencyContrast: una entrada por CADA competencia del marco entregado (evalúa TODAS las que se listen, sin omitir ninguna). Evidencia en 1 frase corta.
 executiveSummary: máximo 2 oraciones.
 {"candidates":[{"name":"string","fileName":"string","score":0,"scoreProfile":0,"scoreCompetencies":0,"recommendation":"CONTRATAR","executiveSummary":"string","summary":"string","strengths":["string"],"gaps":["string"],"matchDetail":{"formacion":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaGeneral":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"experienciaEspecifica":{"requerido":"string","candidato":"string","cumple":"NO CUMPLE"},"formacionComplementaria":{"requerido":"string","candidato":"string","cumple":"CUMPLE"},"condicionesEspeciales":{"requerido":"string","candidato":"string","cumple":"CUMPLE"}},"scoreBreakdown":{"Formación Académica":0,"Experiencia General":0,"Experiencia Específica":0,"Formación Complementaria":0,"Condiciones Especiales":0},"competencies":{"NombreComp":0},"competencyContrast":[{"competencia":"string","nivelRequerido":"ALTO","nivelObservado":"INTERMEDIO","score":0,"evidencia":"string","brecha":"PARCIAL"}]}]}
 recommendation:"CONTRATAR"|"RESERVA"|"NO RECOMENDAR". cumple:"CUMPLE"|"CUMPLE PARCIALMENTE"|"NO CUMPLE". brecha:"SIN BRECHA"|"PARCIAL"|"SIGNIFICATIVA"|"CRITICA". Ordena por score desc.`
@@ -1364,7 +1364,11 @@ export default function App() {
     cvList.forEach((cv,i)=>{ userPrompt += `CV ${i+1} (${cv.name}):\n${cv.content.slice(0,cvMaxChars)}\n\n` })
 
     // max_tokens por modo
-    const maxTokens = { full:3500, compare:2200, competencies:1800, profile:1600 }[modeId] || 1800
+    // max_tokens dinámico: base + extra por cada competencia adicional sobre 5
+    const compCount = compFramework?.length || 5
+    const extraTokens = Math.max(0, compCount - 5) * 150  // ~150 tokens por competencia extra
+    const baseTokens = { full:3500, compare:2200, competencies:1800, profile:1600 }[modeId] || 1800
+    const maxTokens = modeId==='full' || modeId==='compare' ? baseTokens + extraTokens : baseTokens
 
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
