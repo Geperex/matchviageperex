@@ -656,11 +656,11 @@ function RadarChart({ competencies, color = C.navy }) {
   const entries = Object.entries(competencies || {})
   if (!entries.length) return null
 
-  const SIZE   = 240
-  const MARGIN = 60
+  const SIZE   = 220
+  const MARGIN = 90          // margen amplio para etiquetas largas
   const VB     = SIZE + MARGIN * 2
   const cx     = VB / 2, cy = VB / 2
-  const r      = SIZE * 0.40
+  const r      = SIZE * 0.38
   const n      = entries.length
   const angle  = i => (Math.PI * 2 * i) / n - Math.PI / 2
   const pt     = (i, pct) => {
@@ -674,10 +674,17 @@ function RadarChart({ competencies, color = C.navy }) {
   const dataPts  = entries.map((_,i)=>pt(i,entries[i][1]))
   const dataPath = dataPts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')+'Z'
   const uid      = `r${color.replace(/[^a-z0-9]/gi,'')}`
-  const fillCol  = color===C.navy ? 'rgba(27,42,74,0.12)' : 'rgba(201,133,58,0.12)'
+
+  // Dividir nombre en máx 2 líneas de ~14 chars
+  const splitName = (name) => {
+    if (name.length <= 14) return [name, null]
+    const mid = name.lastIndexOf(' ', 14)
+    if (mid > 4) return [name.slice(0, mid), name.slice(mid+1, mid+15) + (name.length > mid+15 ? '…' : '')]
+    return [name.slice(0, 13) + '…', null]
+  }
 
   return (
-    <svg viewBox={`0 0 ${VB} ${VB}`} style={{ width:'100%',maxWidth:320,display:'block',margin:'0 auto',animation:'radarIn .5s ease both' }} preserveAspectRatio="xMidYMid meet">
+    <svg viewBox={`0 0 ${VB} ${VB}`} style={{ width:'100%', maxWidth:380, display:'block', margin:'0 auto', animation:'radarIn .5s ease both', overflow:'visible' }} preserveAspectRatio="xMidYMid meet">
       <defs>
         <radialGradient id={uid} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor={color} stopOpacity=".15"/>
@@ -688,22 +695,52 @@ function RadarChart({ competencies, color = C.navy }) {
         <path key={i} d={ringPath(pct)} fill="none" stroke={C.border}
           strokeWidth={pct===100?1.5:1} strokeDasharray={pct===100?'none':'3,3'}/>
       ))}
-      {[25,50,75].map(pct=>{ const [x,y]=pt(0,pct); return <text key={pct} x={x+3} y={y-3} fontSize="8" fontFamily="'DM Mono'" fill={C.dim} textAnchor="start">{pct}</text> })}
+      {[25,50,75].map(pct=>{ const [x,y]=pt(0,pct); return <text key={pct} x={x+3} y={y-3} fontSize="7" fontFamily="'DM Mono'" fill={C.dim} textAnchor="start">{pct}</text> })}
       {spokes.map((d,i)=><path key={i} d={d} stroke={C.border} strokeWidth="1"/>)}
       <path d={dataPath} fill={`url(#${uid})`} stroke={color} strokeWidth="2" strokeLinejoin="round"/>
-      {dataPts.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="4" fill={color} stroke={C.surface} strokeWidth="2"/>)}
+      {dataPts.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="3.5" fill={color} stroke={C.surface} strokeWidth="2"/>)}
       {entries.map(([name,val],i)=>{
-        const a=angle(i), labelR=r+32
-        const lx=cx+labelR*Math.cos(a), ly=cy+labelR*Math.sin(a)
-        const anchor=Math.cos(a)<-.1?'end':Math.cos(a)>.1?'start':'middle'
-        const shortName=name.length>16?name.slice(0,15)+'…':name
-        const col=scoreColor(val)
+        const a       = angle(i)
+        const labelR  = r + 38
+        const lx      = cx + labelR * Math.cos(a)
+        const ly      = cy + labelR * Math.sin(a)
+        const cosA    = Math.cos(a)
+        const anchor  = cosA < -0.15 ? 'end' : cosA > 0.15 ? 'start' : 'middle'
+        const col     = scoreColor(val)
+        const [line1, line2] = splitName(name)
+        const boxW    = 92
+        const boxH    = line2 ? 36 : 26
+        const boxX    = anchor==='end' ? lx - boxW : anchor==='start' ? lx : lx - boxW/2
+        const boxY    = ly - 13
+
         return (
           <g key={i}>
-            <line x1={pt(i,100)[0].toFixed(1)} y1={pt(i,100)[1].toFixed(1)} x2={lx.toFixed(1)} y2={ly.toFixed(1)} stroke={C.border} strokeWidth="1" strokeDasharray="2,2"/>
-            <rect x={anchor==='end'?lx-88:anchor==='start'?lx:lx-44} y={ly-14} width={88} height={28} rx={4} fill={C.surface} opacity=".9"/>
-            <text x={lx} y={ly-2} textAnchor={anchor} fontSize="8" fontFamily="'DM Mono'" fill={C.muted} fontWeight="500">{shortName}</text>
-            <text x={lx} y={ly+11} textAnchor={anchor} fontSize="11" fontFamily="'DM Mono'" fill={col} fontWeight="700">{val}</text>
+            {/* Línea guía */}
+            <line
+              x1={pt(i,100)[0].toFixed(1)} y1={pt(i,100)[1].toFixed(1)}
+              x2={lx.toFixed(1)} y2={ly.toFixed(1)}
+              stroke={C.borderHi} strokeWidth="1" strokeDasharray="2,3" opacity=".5"
+            />
+            {/* Fondo etiqueta */}
+            <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={5}
+              fill={C.surface} stroke={C.border} strokeWidth=".5" opacity=".95"/>
+            {/* Línea 1 del nombre */}
+            <text x={lx} y={boxY+10} textAnchor={anchor}
+              fontSize="8.5" fontFamily="'DM Sans'" fill={C.muted} fontWeight="500">
+              {line1}
+            </text>
+            {/* Línea 2 del nombre (si existe) */}
+            {line2 && (
+              <text x={lx} y={boxY+21} textAnchor={anchor}
+                fontSize="8.5" fontFamily="'DM Sans'" fill={C.muted} fontWeight="500">
+                {line2}
+              </text>
+            )}
+            {/* Score */}
+            <text x={lx} y={line2 ? boxY+32 : boxY+22} textAnchor={anchor}
+              fontSize="11" fontFamily="'DM Mono'" fill={col} fontWeight="700">
+              {val}
+            </text>
           </g>
         )
       })}
@@ -1442,13 +1479,8 @@ export default function App() {
           {/* Logo */}
           <div className="sb-header">
             <div className="sb-logo">G</div>
-            <div>
-              <div style={{ fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:13,color:C.sidebarText }}>
-                #MatchVia<span style={{ color:C.accent }}>Geperex</span>
-              </div>
-              <div style={{ fontSize:9,color:C.sidebarMuted,fontFamily:"'DM Mono'",letterSpacing:'.06em' }}>
-                GEPEREX LIMITADA · RUT 78.110.793-K
-              </div>
+            <div style={{ fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:13,color:C.sidebarText }}>
+              #MatchVia<span style={{ color:C.accent }}>Geperex</span>
             </div>
           </div>
 
