@@ -1159,11 +1159,53 @@ export default function App() {
   const [activeHistoryId, setActiveHistoryId] = useState(null)
   // Opción C: modo inteligente automático vs. personalizado
   const [showAdvanced, setShowAdvanced]   = useState(false)
+  // Marco competencial — lista de competencias confirmadas para el análisis
+  const [compFramework, setCompFramework] = useState(null)   // null=no definido, []=vacío, [...]=listo
+  const [compFrameworkLoading, setCompFrameworkLoading] = useState(false)
+  const [editingComp, setEditingComp]     = useState(null)   // competencia que se está editando
+  const [newCompInput, setNewCompInput]   = useState('')
   const jobRef = useRef(), cvRef = useRef()
 
   const notify = (icon, msg, type='s') => {
     setToast({ icon, msg, type })
     setTimeout(()=>setToast(null), 3400)
+  }
+
+
+  async function extractCompFramework() {
+    setCompFrameworkLoading(true)
+    try {
+      const res = await fetch('/api/analyze', {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          model:'claude-haiku-4-5-20251001', max_tokens:800,
+          system:'Extrae las competencias requeridas del perfil de cargo. Responde SOLO con JSON: {"competencias":["Competencia 1","Competencia 2",...]}. Máximo 8 competencias. Sin markdown, sin backticks.',
+          messages:[{ role:'user', content:`PERFIL:\n${jobFile?.content?.slice(0,2000)||''}` }]
+        }),
+      })
+      const data = await res.json()
+      const raw = data.content?.map(b=>b.text||'').join('')||''
+      const start = raw.indexOf('{')
+      const end = raw.lastIndexOf('}')
+      if (start !== -1 && end !== -1) {
+        const parsed = JSON.parse(raw.slice(start, end+1))
+        if (parsed.competencias?.length) {
+          setCompFramework(parsed.competencias)
+          notify('✓', `${parsed.competencias.length} competencias extraídas`)
+        }
+      }
+    } catch(e) { notify('⚠','Error al extraer competencias','w') }
+    finally { setCompFrameworkLoading(false) }
+  }
+
+  function confirmCompFramework(list) {
+    setCompFramework(list.filter(c=>c.trim()))
+    notify('✓','Marco competencial confirmado')
+  }
+
+  function resetCompFramework() {
+    setCompFramework(null)
+    setNewCompInput('')
   }
 
   async function callExtractAPI(systemPrompt, userContent) {
@@ -1211,7 +1253,7 @@ export default function App() {
       setJobFile({ name:file.name, content:extracted, status:'ready' })
       notify('✓','Perfil cargado — extrayendo estructura…')
       await extractProfileStructure(extracted, file.name)
-      // Extracción de diccionario en background, sin bloquear ni notificar
+      // Pre-llenar framework con competencias explícitas del perfil (si las hay)
       extractCompetencyDict(extracted, file.name).catch(()=>{})
     } catch(e) {
       setJobFile({ name:file.name, content:'', status:'error' })
@@ -1276,6 +1318,11 @@ export default function App() {
     // Texto del perfil — siempre disponible
     const profileText = jobFile?.content?.slice(0, 1000) || ''
 
+    // Marco competencial confirmado por el usuario
+    const frameworkStr = compFramework?.length
+      ? `COMPETENCIAS A EVALUAR (marco confirmado): ${compFramework.join(', ')}`
+      : null
+
     // Datos estructurados compactos (si están disponibles)
     const compactProfile = profileData ? JSON.stringify({
       cargo: profileData.nombreCargo,
@@ -1299,13 +1346,15 @@ export default function App() {
       userPrompt += compactProfile
         ? `PERFIL ESTRUCTURADO: ${compactProfile}\n\n`
         : `PERFIL DEL CARGO:\n${profileText}\n\n`
+      if (frameworkStr) userPrompt += `${frameworkStr}\n\n`
     } else if (modeId==='competencies') {
       userPrompt += compactDict
         ? `DICCIONARIO COMPETENCIAS: ${compactDict}\n\n`
         : `PERFIL DEL CARGO:\n${profileText}\n\n`
     } else if (modeId==='full') {
       userPrompt += compactProfile ? `PERFIL: ${compactProfile}\n\n` : `TEXTO CARGO:\n${profileText}\n\n`
-      if (compactDict) userPrompt += `COMPETENCIAS: ${compactDict}\n\n`
+      if (frameworkStr) userPrompt += `${frameworkStr}\n\n`
+      else if (compactDict) userPrompt += `COMPETENCIAS: ${compactDict}\n\n`
     } else {
       userPrompt += `PERFIL:\n${profileText}\n\n`
     }
@@ -1485,7 +1534,7 @@ export default function App() {
   function reset() {
     setJobFile(null); setProfileData(null); setCompetencyDict(null); setCvFiles([])
     setResults(null); setCompareResults(null); setError(''); setActiveTab('resumen')
-    setActiveHistoryId(null)
+    setActiveHistoryId(null); setCompFramework(null); setNewCompInput('')
     if (jobRef.current) jobRef.current.value=''
     if (cvRef.current) cvRef.current.value=''
     notify('↺','Reiniciado')
@@ -1539,6 +1588,133 @@ export default function App() {
               <div style={{ fontSize:9,color:C.greenLt,fontFamily:"'DM Mono'",marginTop:4 }}>✓ Estructura extraída</div>
             )}
           </div>
+
+          {/* ── MARCO COMPETENCIAL — visible cuando hay perfil cargado ── */}
+          {profileData && (
+            <div className="sb-section" style={{ borderLeft:`3px solid ${C.accent}` }}>
+              <div className="sb-section-title" style={{ marginBottom: compFramework ? 8 : 6 }}>
+                <div className="sb-step" style={{ background: compFramework ? C.green : C.accent }}>
+                  {compFramework ? '✓' : '⚡'}
+                </div>
+                <div>
+                  <div className="sb-label">Marco Competencial</div>
+                  <div className="sb-sublabel">
+                    {compFramework
+                      ? `${compFramework.length} competencias definidas`
+                      : profileData.competencias?.length
+                        ? 'Competencias detectadas en el perfil'
+                        : 'No se detectaron competencias explícitas'}
+                  </div>
+                </div>
+                {compFramework && (
+                  <button onClick={resetCompFramework} style={{
+                    marginLeft:'auto',background:'none',border:'none',cursor:'pointer',
+                    fontSize:9,color:C.sidebarMuted,fontFamily:"'DM Mono'",padding:'2px 4px',
+                  }} title="Resetear marco">✕</button>
+                )}
+              </div>
+
+              {/* CASO A: Framework ya confirmado — mostrar lista editable */}
+              {compFramework && (
+                <div>
+                  <div style={{ display:'flex',flexDirection:'column',gap:3,marginBottom:8 }}>
+                    {compFramework.map((comp,i)=>(
+                      <div key={i} style={{
+                        display:'flex',alignItems:'center',gap:6,
+                        background:'rgba(255,255,255,.06)',borderRadius:6,
+                        padding:'4px 8px',fontSize:10,color:C.sidebarText,
+                      }}>
+                        <span style={{ color:C.greenLt,flexShrink:0,fontSize:9 }}>✓</span>
+                        {editingComp===i ? (
+                          <input
+                            autoFocus
+                            defaultValue={comp}
+                            onBlur={e=>{
+                              const updated=[...compFramework]; updated[i]=e.target.value.trim()||comp
+                              setCompFramework(updated.filter(c=>c)); setEditingComp(null)
+                            }}
+                            onKeyDown={e=>{ if(e.key==='Enter'||e.key==='Escape') e.target.blur() }}
+                            style={{ flex:1,background:'rgba(255,255,255,.1)',border:'none',borderRadius:4,
+                              padding:'2px 5px',color:C.sidebarText,fontSize:10,outline:'none' }}
+                          />
+                        ) : (
+                          <span style={{ flex:1,cursor:'pointer' }} onClick={()=>setEditingComp(i)}>{comp}</span>
+                        )}
+                        <button onClick={()=>setCompFramework(compFramework.filter((_,j)=>j!==i))}
+                          style={{ background:'none',border:'none',cursor:'pointer',color:C.sidebarMuted,
+                            fontSize:11,padding:'0 2px',lineHeight:1 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Agregar nueva competencia */}
+                  <div style={{ display:'flex',gap:4 }}>
+                    <input
+                      value={newCompInput}
+                      onChange={e=>setNewCompInput(e.target.value)}
+                      onKeyDown={e=>{ if(e.key==='Enter'&&newCompInput.trim()){
+                        setCompFramework([...compFramework,newCompInput.trim()]); setNewCompInput('')
+                      }}}
+                      placeholder="+ Agregar competencia"
+                      style={{ flex:1,background:'rgba(255,255,255,.06)',border:`1px solid ${C.sidebarDim}`,
+                        borderRadius:6,padding:'5px 8px',color:C.sidebarText,fontSize:9,
+                        fontFamily:"'DM Mono'",outline:'none' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* CASO B: Competencias explícitas en perfil — ofrecer confirmación */}
+              {!compFramework && profileData.competencias?.length > 0 && (
+                <div>
+                  <div style={{ fontSize:9,color:C.sidebarMuted,marginBottom:6 }}>
+                    Detectadas en el perfil — confirma para usarlas como referencia:
+                  </div>
+                  <div style={{ display:'flex',flexWrap:'wrap',gap:4,marginBottom:8 }}>
+                    {profileData.competencias.map((c,i)=>(
+                      <span key={i} style={{ fontSize:9,padding:'2px 7px',borderRadius:100,
+                        background:'rgba(201,133,58,.15)',border:`1px solid ${C.accent}30`,
+                        color:C.accent,fontFamily:"'DM Mono'" }}>{c}</span>
+                    ))}
+                  </div>
+                  <button onClick={()=>confirmCompFramework(profileData.competencias)} style={{
+                    width:'100%',padding:'7px',borderRadius:7,border:`1px solid ${C.accent}50`,
+                    background:'rgba(201,133,58,.12)',color:C.accent,cursor:'pointer',
+                    fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,
+                  }}>✓ Usar estas competencias</button>
+                </div>
+              )}
+
+              {/* CASO C: Sin competencias explícitas — ofrecer extracción GIA */}
+              {!compFramework && (!profileData.competencias || profileData.competencias.length === 0) && (
+                <div>
+                  <div style={{ fontSize:9,color:C.sidebarMuted,lineHeight:1.5,marginBottom:8 }}>
+                    El perfil no tiene competencias explícitas. Puedes extraerlas automáticamente con GIA.
+                  </div>
+                  <button
+                    onClick={extractCompFramework}
+                    disabled={compFrameworkLoading}
+                    style={{
+                      width:'100%',padding:'8px',borderRadius:7,border:`1px solid ${C.accent}50`,
+                      background: compFrameworkLoading ? 'rgba(255,255,255,.05)' : 'rgba(201,133,58,.12)',
+                      color: compFrameworkLoading ? C.sidebarMuted : C.accent,
+                      cursor: compFrameworkLoading ? 'wait' : 'pointer',
+                      fontFamily:"'DM Sans'",fontSize:11,fontWeight:700,
+                      display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+                    }}
+                  >
+                    {compFrameworkLoading ? (
+                      <><div className="spinner" style={{ width:12,height:12,borderWidth:1.5,borderColor:'rgba(255,255,255,.2)',borderTopColor:C.accent }}/> Extrayendo…</>
+                    ) : (
+                      <>⚡ Extraer competencias con GIA</>
+                    )}
+                  </button>
+                  <div style={{ fontSize:8,color:C.sidebarMuted,textAlign:'center',marginTop:4,fontFamily:"'DM Mono'" }}>
+                    Sin marco definido, el análisis será solo curricular
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Step 2 — CVs */}
           <div className="sb-section">
@@ -1793,16 +1969,49 @@ export default function App() {
                 {results&&activeTab==='resumen'&&(
                   <div className="analysis-banner">
                     <div className="banner-icon">📋</div>
-                    <div>
+                    <div style={{ flex:1 }}>
                       <div className="banner-title">ANÁLISIS COMPLETADO</div>
                       <div className="banner-meta">
                         <div className="bm-item"><span className="bm-label">Perfil analizado</span><span className="bm-val">{profileData?.nombreCargo||jobFile?.name||'—'}</span></div>
                         <div className="bm-item"><span className="bm-label">Candidatos</span><span className="bm-val">{candidates.length}</span></div>
-                        <div className="bm-item"><span className="bm-label">Fecha de análisis</span><span className="bm-val">{analysisDate}</span></div>
-                        <div className="bm-item"><span className="bm-label">Tipo de análisis</span><span className="bm-val">{MODES.find(m=>m.id===results.mode)?.label}</span></div>
+                        <div className="bm-item"><span className="bm-label">Fecha</span><span className="bm-val">{analysisDate}</span></div>
+                        <div className="bm-item"><span className="bm-label">Tipo</span><span className="bm-val">{MODES.find(m=>m.id===results.mode)?.label}</span></div>
+                        {compFramework?.length > 0 && (
+                          <div className="bm-item"><span className="bm-label">Marco</span><span className="bm-val" style={{ color:C.green }}>{compFramework.length} competencias definidas</span></div>
+                        )}
                       </div>
                     </div>
-                    <div className="banner-badge">IA + Criterio Experto</div>
+                    <div style={{ display:'flex',flexDirection:'column',gap:6,alignItems:'flex-end',flexShrink:0 }}>
+                      {/* Badge metodología */}
+                      <div className="banner-badge">
+                        {compFramework?.length > 0 ? 'IA + Marco Competencial' : 'IA + Criterio Experto'}
+                      </div>
+                      {/* Aviso análisis curricular */}
+                      {!compFramework?.length && (
+                        <div style={{
+                          fontSize:9,color:C.amber,background:C.amberDim,
+                          border:`1px solid ${C.amber}30`,borderRadius:100,
+                          padding:'3px 10px',fontFamily:"'DM Mono'",fontWeight:600,
+                          whiteSpace:'nowrap',
+                        }} title="El análisis se basa en la información curricular del CV. Para evaluar competencias, define un marco competencial en el panel izquierdo.">
+                          ⚠ Basado únicamente en análisis curricular
+                        </div>
+                      )}
+                      {/* Botón SELVIA */}
+                      <div
+                        title="Pronto — Evaluación de competencias con entrevista estructurada SELVIA"
+                        style={{
+                          fontSize:9,color:C.dim,background:'transparent',
+                          border:`1px solid ${C.borderHi}`,borderRadius:100,
+                          padding:'3px 10px',fontFamily:"'DM Mono'",fontWeight:600,
+                          cursor:'not-allowed',opacity:.6,whiteSpace:'nowrap',
+                          display:'flex',alignItems:'center',gap:4,
+                        }}
+                      >
+                        🎯 Evaluar con SELVIA
+                        <span style={{ fontSize:8,background:C.border,borderRadius:100,padding:'1px 5px' }}>Pronto</span>
+                      </div>
+                    </div>
                   </div>
                 )}
 
