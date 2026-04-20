@@ -38,10 +38,12 @@ const C = {
 }
 
 // ─── PROMPTS (sin cambios) ────────────────────────────────────────────────────
-const PROMPT_EXTRACT_PROFILE = `Extrae la estructura del perfil de cargo. IMPORTANTE: el campo "competencias" debe contener TODOS los nombres de competencias mencionadas, incluyendo las que tengan código (C1, C2...), las que estén en secciones como "COMPETENCIAS PARA EL EJERCICIO DEL CARGO", "VALORES", o similares. Extrae solo el nombre, no la definición. Solo JSON válido, sin markdown:
-{"nombreCargo":"string","area":"string|null","dependencia":"string|null","mision":"string|null","funciones":["string"],"estudios":{"nivelRequerido":"string|null","carrerasAceptadas":["string"],"requisitosAdicionales":"string|null"},"experiencia":{"generalAnios":"string|null","especifica":["string"],"sectoresDeseados":["string"]},"competencias":["Nombre competencia 1","Nombre competencia 2"],"conocimientosTecnicos":["string"],"idiomas":"string|null","condicionesEspeciales":["string"],"remuneracion":"string|null","jornada":"string|null","lugarTrabajo":"string|null"}`
+const PROMPT_EXTRACT_PROFILE = `Extrae la estructura del perfil de cargo. IMPORTANTE para el campo "competencias": busca en TODO el documento cualquier lista de competencias, habilidades o capacidades requeridas. Pueden aparecer bajo títulos como "Competencias", "Habilidades", "Capacidades", "Perfil conductual", o como ítems numerados/codificados (C1, 1., a), etc.). Extrae SOLO el nombre de cada competencia, sin definición ni descripción. Si no encuentras ninguna, usa [].
+Solo JSON válido, sin markdown, sin backticks:
+{"nombreCargo":"string","area":"string|null","dependencia":"string|null","mision":"string|null","funciones":["string"],"estudios":{"nivelRequerido":"string|null","carrerasAceptadas":["string"],"requisitosAdicionales":"string|null"},"experiencia":{"generalAnios":"string|null","especifica":["string"],"sectoresDeseados":["string"]},"competencias":["string"],"conocimientosTecnicos":["string"],"idiomas":"string|null","condicionesEspeciales":["string"],"remuneracion":"string|null","jornada":"string|null","lugarTrabajo":"string|null"}`
 
-const PROMPT_EXTRACT_COMPETENCIES = `Extrae las competencias del perfil de cargo (5-8 competencias). Solo JSON válido, sin markdown:
+const PROMPT_EXTRACT_COMPETENCIES = `Extrae las competencias requeridas del perfil de cargo. Busca en TODO el documento secciones tituladas "Competencias", "Habilidades", "Capacidades", "Perfil conductual", ítems con código (C1, C2...), numerados o cualquier lista de atributos requeridos al candidato. Para cada competencia encontrada, extrae su nombre y características. Si no hay competencias explícitas, infiere las más relevantes para el cargo según sus funciones (máximo 5 inferidas, indicar fuente INFERIDA).
+Solo JSON válido, sin markdown, sin backticks:
 {"nombreCargo":"string","competencias":[{"nombre":"string","tipo":"CONDUCTUAL|TECNICA|LIDERAZGO|GESTION","definicion":"string","nivelRequerido":"BASICO|INTERMEDIO|ALTO|CRITICO","indicadores":["string"],"fuente":"EXPLICITA|INFERIDA"}]}`
 
 const PROMPTS = {
@@ -1179,7 +1181,7 @@ export default function App() {
         method:'POST', headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({
           model:'claude-haiku-4-5-20251001', max_tokens:800,
-          system:'Extrae las competencias para el ejercicio del cargo. Busca secciones como COMPETENCIAS, COMPETENCIAS PARA EL EJERCICIO DEL CARGO, o competencias con código C1/C2/etc. Responde SOLO con JSON: {"competencias":["Nombre Competencia 1","Nombre Competencia 2",...]}. Máximo 8 competencias, solo el nombre sin definición. Sin markdown, sin backticks.',
+          system:'Extrae las competencias o habilidades requeridas del perfil de cargo. Búscalas en cualquier sección: "Competencias", "Habilidades", "Capacidades", ítems numerados o con código (C1, C2...), o cualquier lista de atributos del candidato. Si no hay competencias explícitas, infiere las más relevantes según las funciones del cargo. Devuelve solo los nombres, sin definiciones. Solo JSON: {"competencias":["nombre1","nombre2",...]}. Máximo 8. Sin markdown, sin backticks.',
           messages:[{ role:'user', content:`PERFIL:\n${jobFile?.content?.slice(0,5000)||''}` }]
         }),
       })
@@ -1211,7 +1213,7 @@ export default function App() {
   async function callExtractAPI(systemPrompt, userContent) {
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1500, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:2000, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
