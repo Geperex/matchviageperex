@@ -136,7 +136,7 @@ const TABS = [
   { id: 'resumen',      label: 'Resumen Ejecutivo' },
   { id: 'competencias', label: 'Competencias' },
   { id: 'detalle',      label: 'Detalle' },
-  { id: 'comparativa',  label: 'Comparativa' },
+  { id: 'comparativa',  label: 'Análisis Comparativo' },
 ]
 
 const RECO = {
@@ -973,10 +973,12 @@ function CandidateCard({ candidate: c, idx, tab }) {
 // ─── COMPARATIVE PANEL ────────────────────────────────────────────────────────
 function ComparativePanel({ compareResults, onExportCSV }) {
   const { profile, competencies, full } = compareResults
+  // Usar profile como fuente principal de nombres (más liviano, siempre devuelve todos los CVs)
+  // full puede truncarse con 3+ candidatos por límite de tokens
   const allNames = [...new Set([
     ...(profile?.candidates||[]).map(c=>c.name),
-    ...(competencies?.candidates||[]).map(c=>c.name),
     ...(full?.candidates||[]).map(c=>c.name),
+    ...(competencies?.candidates||[]).map(c=>c.name),
   ])]
   const find = (res,name) => res?.candidates?.find(c=>c.name===name)
   const matrix = allNames.map(name=>{
@@ -1213,9 +1215,12 @@ export default function App() {
   async function callExtractAPI(systemPrompt, userContent) {
     const res = await fetch('/api/analyze', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:2000, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1200, system:systemPrompt, messages:[{ role:'user', content:userContent }] }),
     })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) {
+      const errData = await res.json().catch(()=>({}))
+      throw new Error(errData?.error?.message || `HTTP ${res.status}`)
+    }
     const data = await res.json()
     if (data.error) throw new Error(`API: ${data.error.message||JSON.stringify(data.error)}`)
     const raw = data.content?.map(b=>b.text||'').join('')||''
@@ -1266,7 +1271,7 @@ export default function App() {
   async function extractProfileStructure(content, fileName) {
     setProfileLoading(true)
     try {
-      const parsed = await callExtractAPI(PROMPT_EXTRACT_PROFILE, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,5000)}`)
+      const parsed = await callExtractAPI(PROMPT_EXTRACT_PROFILE, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,4000)}`)
       setProfileData(parsed)
       notify('✓',`Estructura extraída — ${parsed.nombreCargo||'cargo identificado'}`)
     } catch(e) { notify('⚠',`Perfil: ${e.message}`,'w') }
@@ -1369,7 +1374,7 @@ export default function App() {
     // max_tokens dinámico: base + extra por cada competencia adicional sobre 5
     const compCount = compFramework?.length || 5
     const extraTokens = Math.max(0, compCount - 5) * 150  // ~150 tokens por competencia extra
-    const baseTokens = { full:3500, compare:2200, competencies:1800, profile:1600 }[modeId] || 1800
+    const baseTokens = { full:3500, compare:3000, competencies:1800, profile:1600 }[modeId] || 1800
     const maxTokens = modeId==='full' || modeId==='compare' ? baseTokens + extraTokens : baseTokens
 
     const res = await fetch('/api/analyze', {
@@ -1919,28 +1924,19 @@ export default function App() {
             <div className="result-hd">
               <div className="tabs" style={{ flex:1,border:'none',borderBottom:'none' }}>
                 {TABS.filter(t=>{
-                  if (t.id==='comparativa') return !!compareResults
+                  // Si solo hay compareResults, mostrar SOLO la tab comparativa
+                  if (!results && compareResults) return t.id === 'comparativa'
+                  // Si hay results, mostrar todas menos comparativa (a menos que también haya compareResults)
+                  if (t.id === 'comparativa') return !!compareResults
                   return true
-                }).map(t=>{
-                  // Tab sin contenido individual (solo compareResults disponible)
-                  const isUnavailable = !results && compareResults && t.id !== 'comparativa'
-                  return (
-                    <button key={t.id}
-                      className={`tab-btn${activeTab===t.id?' active':''}`}
-                      onClick={()=>setActiveTab(t.id)}
-                      style={{ opacity: isUnavailable ? 0.45 : 1, position:'relative' }}
-                      title={isUnavailable ? 'Disponible con análisis individual' : ''}
-                    >
-                      {t.label}
-                      {isUnavailable && (
-                        <span style={{
-                          marginLeft:5, fontSize:8, fontFamily:"'DM Mono'",
-                          color:C.dim, verticalAlign:'middle',
-                        }}>—</span>
-                      )}
-                    </button>
-                  )
-                })}
+                }).map(t=>(
+                  <button key={t.id}
+                    className={`tab-btn${activeTab===t.id?' active':''}`}
+                    onClick={()=>setActiveTab(t.id)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
               <div style={{ display:'flex',gap:8,flexShrink:0 }}>
                 <button className="export-btn">📄 Exportar PDF</button>
