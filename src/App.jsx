@@ -85,7 +85,7 @@ const MODES = [
   { id: 'profile', label: 'Análisis de Perfil', icon: '📋', cost: 2,
     desc: 'Compatibilidad curricular',
     tooltip: 'Contrasta el CV contra los requisitos formales del cargo: formación, experiencia, certificaciones y condiciones especiales.' },
-  { id: 'compare', label: 'Vista Comparativa',  icon: '⚡', cost: 3,
+  { id: 'compare', label: 'Vista Comparativa',  icon: '⚡', cost: 2,
     desc: 'Ranking entre candidatos',
     tooltip: 'Analiza todos los CVs contra el perfil y los rankea en una tabla comparativa. Ideal para decidir entre 2 o más candidatos.' },
 ]
@@ -578,6 +578,15 @@ body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;-webkit
 @keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
 @keyframes radarIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
 @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@media print {
+  .sidebar, .topbar, .result-hd, .export-btn, .page-footer { display:none!important; }
+  .content { margin:0!important; padding:0!important; }
+  .main-content { padding:12px!important; }
+  .shell { display:block!important; }
+  .bp { break-inside:avoid; page-break-inside:avoid; }
+  .candidates-grid { grid-template-columns:1fr!important; }
+  body { background:#fff!important; }
+}
 `
 
 // ─── DONUT CHART SVG ──────────────────────────────────────────────────────────
@@ -789,8 +798,6 @@ function CandidateCard({ candidate: c, idx, tab }) {
             <tr>
               <th>Candidato</th>
               <th>Perfil</th>
-              <th>Competencias</th>
-              <th>360° Global</th>
               <th>Match Global</th>
               <th>Recomendación</th>
             </tr>
@@ -807,8 +814,6 @@ function CandidateCard({ candidate: c, idx, tab }) {
                     </div>
                   </td>
                   <td><span style={{ fontFamily:"'DM Mono'",fontWeight:700,color:scoreColor(row.p?.score||0) }}>{row.p?.score??'—'}%</span></td>
-                  <td><span style={{ fontFamily:"'DM Mono'",fontWeight:700,color:scoreColor(row.co?.score||0) }}>{row.co?.score??'—'}%</span></td>
-                  <td><span style={{ fontFamily:"'DM Mono'",fontWeight:700,color:scoreColor(row.f?.score||0) }}>{row.f?.score??'—'}%</span></td>
                   <td><span style={{ fontFamily:"'DM Mono'",fontWeight:700,fontSize:14,color:scoreColor(row.avg) }}>{row.avg}%</span></td>
                   <td><span className="reco-badge" style={{ color:reco.color,background:reco.bg,borderColor:reco.border }}>{reco.label}</span></td>
                 </tr>
@@ -879,7 +884,6 @@ function ProfileCard({ profile }) {
     ['Exp. General',  profile.experiencia?.generalAnios],
     ['Exp. Específica',profile.experiencia?.especifica?.join(' · ')],
     ['Sectores',      profile.experiencia?.sectoresDeseados?.join(', ')],
-    ['Competencias',  profile.competencias?.join(', ')],
     ['Conocimientos', profile.conocimientosTecnicos?.join(', ')],
     ['Idiomas',       profile.idiomas],
     ['Condiciones',   profile.condicionesEspeciales?.join(' · ')],
@@ -1049,7 +1053,7 @@ export default function App() {
                     fontSize:9,color:C.greenLt,fontFamily:"'DM Mono'" }}>
                     <span>✓</span>
                     {ready.length===1
-                      ? '1 CV detectado → 360° Global'
+                      ? '1 CV detectado → Análisis de Perfil'
                       : `${ready.length} CVs detectados → Vista Comparativa`
                     }
                   </div>
@@ -1201,7 +1205,7 @@ export default function App() {
                 ))}
               </div>
               <div style={{ display:'flex',gap:8,flexShrink:0 }}>
-                <button className="export-btn">📄 Exportar PDF</button>
+                <button className="export-btn" onClick={()=>window.print()}>📄 Exportar PDF</button>
                 <button className="export-btn" onClick={exportCSV}>📊 Exportar CSV</button>
               </div>
             </div>
@@ -1275,12 +1279,12 @@ export default function App() {
                     <div style={{ color:C.muted, fontSize:13, maxWidth:380, lineHeight:1.7, marginBottom:24 }}>
                       {activeTab==='resumen' && (
                         <>
-                          Ejecutaste una <strong style={{ color:C.navy }}>Vista Comparativa</strong>, que analiza los 3 modos en paralelo. Para ver el resumen individual de candidatos, ejecuta un análisis de tipo <strong style={{ color:C.accent }}>Análisis de Perfil</strong>, <strong style={{ color:C.accent }}>Competencias</strong> o <strong style={{ color:C.accent }}>360° Global</strong>.
+                          Ejecutaste una <strong style={{ color:C.navy }}>Vista Comparativa</strong>. Para ver el resumen individual de un candidato, ejecuta un <strong style={{ color:C.accent }}>Análisis de Perfil</strong>.
                         </>
                       )}
                       {activeTab==='detalle' && (
                         <>
-                          Esta vista muestra el detalle curricular completo de cada candidato. Para acceder, ejecuta un análisis de tipo <strong style={{ color:C.accent }}>Análisis de Perfil</strong> o <strong style={{ color:C.accent }}>360° Global</strong>.
+                          Esta vista muestra el detalle curricular completo. Para acceder, ejecuta un <strong style={{ color:C.accent }}>Análisis de Perfil</strong>.
                         </>
                       )}
                     </div>
@@ -1385,7 +1389,7 @@ export default function App() {
                 <div className="empty-title">Listo para analizar</div>
                 <div className="empty-sub">Sube el perfil del cargo y los CVs desde el panel izquierdo, selecciona el tipo de análisis y presiona Analizar.</div>
                 <div className="empty-pills">
-                  {[{label:'Perfil Curricular',col:C.navy},{label:'Análisis 360°',col:C.green},{label:'Comparativa',col:C.amber}].map(({label,col})=>(
+                  {[{label:'Análisis de Perfil',col:C.navy},{label:'Vista Comparativa',col:C.amber}].map(({label,col})=>(
                     <span key={label} className="empty-pill" style={{ color:col,borderColor:`${col}30`,background:`${col}08` }}>{label}</span>
                   ))}
                 </div>
