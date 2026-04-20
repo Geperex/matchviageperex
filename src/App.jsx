@@ -1176,9 +1176,24 @@ export default function App() {
     if (data.error) throw new Error(`API: ${data.error.message||JSON.stringify(data.error)}`)
     const raw = data.content?.map(b=>b.text||'').join('')||''
     if (!raw) throw new Error(`Sin respuesta (stop: ${data.stop_reason||'?'})`)
-    // Extraer JSON limpio desde respuesta con o sin markdown
-    const mdMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-    const clean = mdMatch ? mdMatch[1].trim() : raw.replace(/```/g,'').trim()
+    // Extraer JSON limpio — maneja: backticks, "json {", texto adicional
+    let clean = raw.trim()
+    // 1. Si viene en bloque ```json ... ```
+    const mdMatch = clean.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (mdMatch) {
+      clean = mdMatch[1].trim()
+    } else {
+      // 2. Extraer desde el primer { hasta el } balanceado
+      const start = clean.indexOf('{')
+      if (start !== -1) {
+        let depth = 0, end = -1
+        for (let i = start; i < clean.length; i++) {
+          if (clean[i] === '{') depth++
+          else if (clean[i] === '}') { depth--; if (depth === 0) { end = i; break } }
+        }
+        if (end !== -1) clean = clean.slice(start, end + 1)
+      }
+    }
     try { return JSON.parse(clean) }
     catch {
       const m = clean.match(/\{[\s\S]*\}/)
@@ -1216,10 +1231,20 @@ export default function App() {
   async function extractCompetencyDict(content, fileName) {
     setCompetencyLoading(true)
     try {
-      const parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `DOCUMENTO DE PERFIL DE CARGO (${fileName}):\n\n${content.slice(0,3000)}`)
-      setCompetencyDict(parsed)
-      notify('✓',`${parsed.competencias?.length||0} competencias identificadas`)
-    } catch(e) { notify('⚠',`Competencias: ${e.message}`,'w') }
+      // Intentar con 2500 chars primero, luego con 1500 si falla
+      let parsed = null
+      try {
+        parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `PERFIL (${fileName}):\n${content.slice(0,2500)}`)
+      } catch {
+        try {
+          parsed = await callExtractAPI(PROMPT_EXTRACT_COMPETENCIES, `PERFIL (${fileName}):\n${content.slice(0,1500)}`)
+        } catch { /* silencioso — el 360° funciona igual sin diccionario */ }
+      }
+      if (parsed) {
+        setCompetencyDict(parsed)
+        // Notificación silenciosa — no interrumpir al usuario
+      }
+    } catch { /* silencioso */ }
     finally { setCompetencyLoading(false) }
   }
 
@@ -1992,7 +2017,7 @@ export default function App() {
                 <div className="empty-title">Listo para analizar</div>
                 <div className="empty-sub">Sube el perfil del cargo y los CVs desde el panel izquierdo, selecciona el tipo de análisis y presiona Analizar.</div>
                 <div className="empty-pills">
-                  {[{label:'Perfil Curricular',col:C.navy},{label:'Competencias',col:C.accent},{label:'Análisis 360°',col:C.green},{label:'Comparativa',col:C.amber}].map(({label,col})=>(
+                  {[{label:'Perfil Curricular',col:C.navy},{label:'Análisis 360°',col:C.green},{label:'Comparativa',col:C.amber}].map(({label,col})=>(
                     <span key={label} className="empty-pill" style={{ color:col,borderColor:`${col}30`,background:`${col}08` }}>{label}</span>
                   ))}
                 </div>
